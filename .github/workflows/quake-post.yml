@@ -20,6 +20,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+        working-directory: scripts
+
       - name: Run quake-post
         env:
           # Bluesky（使う場合のみ設定。未設定ならスキップされます）
@@ -45,3 +49,4 @@ jobs:
           else
             echo "posted.json unchanged; nothing to commit."
           fi
+
