@@ -27,7 +27,7 @@ const STATE_TTL_MS = 3 * 60 * 60 * 1000;
 const BACKFILL_CAP = parseInt(process.env.BACKFILL_CAP || '6', 10);
 
 // 公開サイトの URL（GitHub Variables の SITE_URL で上書き可）
-const SITE_URL = process.env.SITE_URL || 'https://exquisite-crumble-17f890.netlify.app/';
+const SITE_URL = process.env.SITE_URL || 'https://globelabo.netlify.app/';
 
 // USGS M4.5+ 過去1時間フィード
 const USGS_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_hour.geojson';

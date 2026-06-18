@@ -196,7 +196,7 @@ async function renderShareCard(q) {
     // フッター（サイトドメイン）
     ctx.font = '600 24px ' + FONT;
     ctx.fillStyle = COL.muted;
-    ctx.fillText('exquisite-crumble-17f890.netlify.app', x, H - 48);
+    ctx.fillText('globelabo.netlify.app', x, H - 48);
 
     return await canvas.encode('jpeg', 90);
   } catch (err) {
