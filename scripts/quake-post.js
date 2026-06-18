@@ -14,9 +14,13 @@
 // 投稿対象とする最小マグニチュード
 const MIN_MAG = parseFloat(process.env.MIN_MAG || '4.5');
 
-// 検知ウィンドウ：「過去 N 分以内」に発生した地震を対象にする
-// 実行間隔（5分）より少し広め（6分）にして取りこぼしを防ぐ
-const WINDOW_MS = 6 * 60 * 1000;
+// 投稿済み地震IDを記録する状態ファイル（リポジトリにコミットされる）
+const fs = require('fs');
+const path = require('path');
+const STATE_FILE = path.join(__dirname, 'posted.json');
+
+// 状態記録の保持期間（USGSフィードは過去1時間なので3時間あれば十分）
+const STATE_TTL_MS = 3 * 60 * 60 * 1000;
 
 // 公開サイトの URL（GitHub Variables の SITE_URL で上書き可）
 const SITE_URL = process.env.SITE_URL || 'https://exquisite-crumble-17f890.netlify.app/';
@@ -209,21 +213,35 @@ async function main() {
 
   console.log(`Fetched ${features.length} earthquakes from USGS`);
 
-  // 対象ウィンドウ内 かつ MIN_MAG 以上に絞り込む
-  const cutoff = Date.now() - WINDOW_MS;
-  const fresh = features.filter(
-    f => f.properties.time >= cutoff && (f.properties.mag || 0) >= MIN_MAG
+  // 投稿済み記録を読み込む
+  const state = loadState();
+  const firstRun = Object.keys(state).length === 0;
+
+  // MIN_MAG 以上 かつ まだ投稿していない地震に絞り込む
+  let candidates = features.filter(
+    f => (f.properties.mag || 0) >= MIN_MAG && !state[f.id]
   );
+  // 古いものから順に投稿
+  candidates.sort((a, b) => a.properties.time - b.properties.time);
 
-  console.log(`${fresh.length} earthquakes ≥ M${MIN_MAG} within the last ${WINDOW_MS / 60000} min`);
+  console.log(`${candidates.length} new earthquakes ≥ M${MIN_MAG} not yet posted`);
 
-  if (fresh.length === 0) {
+  // 初回実行（記録ファイルなし）は、過去1時間分を一斉に投稿してしまわないよう
+  // 現在のフィードを「投稿済み」として記録だけして終了（スパム防止）
+  if (firstRun) {
+    for (const f of features) state[f.id] = f.properties.time;
+    saveState(state);
+    console.log('First run: seeded state with current feed; no posts sent. Future quakes will post.');
+    return;
+  }
+
+  if (candidates.length === 0) {
     console.log('No new earthquakes to post.');
     return;
   }
 
   let posted = 0;
-  for (const f of fresh) {
+  for (const f of candidates) {
     const q = {
       id:      f.id,
       mag:     f.properties.mag || 0,
@@ -244,30 +262,61 @@ async function main() {
     console.log(text);
 
     // それぞれ独立して投稿（片方が失敗しても、もう片方は続行）
+    let ok = false;
     try {
-      if (await postToBluesky(text, lang)) console.log('✅ Bluesky: posted');
+      if (await postToBluesky(text, lang)) { console.log('✅ Bluesky: posted'); ok = true; }
     } catch (err) {
       console.error('❌ Bluesky failed:', err.message);
     }
     try {
-      if (await postToMastodon(text, lang)) console.log('✅ Mastodon: posted');
+      if (await postToMastodon(text, lang)) { console.log('✅ Mastodon: posted'); ok = true; }
     } catch (err) {
       console.error('❌ Mastodon failed:', err.message);
     }
 
-    posted++;
+    // 少なくとも片方に投稿できたら「投稿済み」として記録
+    // （全滅した場合は記録せず、次回に再試行する）
+    if (ok) { state[q.id] = q.time; posted++; }
 
     // 連続投稿の間に少し待機
-    if (fresh.indexOf(f) < fresh.length - 1) {
+    if (candidates.indexOf(f) < candidates.length - 1) {
       await new Promise(r => setTimeout(r, 2000));
     }
   }
 
-  console.log(`\nDone: processed ${posted}/${fresh.length} earthquakes.`);
+  // 投稿済み記録を保存（次回の重複防止）
+  saveState(state);
+
+  console.log(`\nDone: posted ${posted}/${candidates.length} earthquakes.`);
+}
+
+// ─────────────────────────────────────────────
+// 投稿済み状態の読み書き（posted.json）
+// ─────────────────────────────────────────────
+
+function loadState() {
+  try {
+    const raw = fs.readFileSync(STATE_FILE, 'utf8');
+    const obj = JSON.parse(raw);
+    return (obj && typeof obj === 'object') ? obj : {};
+  } catch {
+    return {}; // 初回はファイルなし
+  }
+}
+
+function saveState(state) {
+  // TTL を過ぎた古い記録を剪定（ファイルの肥大化を防ぐ）
+  const cutoff = Date.now() - STATE_TTL_MS;
+  const pruned = {};
+  for (const [id, t] of Object.entries(state)) {
+    if (t >= cutoff) pruned[id] = t;
+  }
+  fs.writeFileSync(STATE_FILE, JSON.stringify(pruned, null, 0));
 }
 
 main().catch(err => {
   console.error('Fatal error:', err);
   process.exit(1);
 });
+
 
