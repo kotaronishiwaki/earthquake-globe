@@ -1,0 +1,36 @@
+name: Auto-tweet M4.5+ earthquakes
+
+on:
+  schedule:
+    # 5分ごとに実行（GitHub Actionsの最小間隔）
+    - cron: '*/5 * * * *'
+  workflow_dispatch:   # 手動実行ボタンも有効化
+
+jobs:
+  tweet:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: none   # ファイルへの書き込み不要
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: scripts
+
+      - name: Run quake-tweet
+        env:
+          X_API_KEY:            ${{ secrets.X_API_KEY }}
+          X_API_SECRET:         ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN:       ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+          SITE_URL:             ${{ vars.SITE_URL }}
+        run: node quake-tweet.js
+        working-directory: scripts
