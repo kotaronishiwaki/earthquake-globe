@@ -63,24 +63,47 @@ function timeAgo(ms) {
   return m < 1 ? 'just now' : `${m} min ago`;
 }
 
+// 津波フラグが立っているときだけ挿入される警告行（震源国の言語）
+const TSUNAMI_LINE = {
+  en: '🌊 Tsunami may be possible — stay away from the coast',
+  ja: '🌊 津波のおそれ — 海岸に近づかないでください',
+  zh: '🌊 可能引发海啸 — 请远离海岸',
+  hi: '🌊 सुनामी संभव — तट से दूर रहें',
+  es: '🌊 Posible tsunami — aléjese de la costa',
+  ar: '🌊 احتمال حدوث تسونامي — ابتعدوا عن الساحل',
+};
+
+// 津波フラグ時に追加するハッシュタグ
+const TSUNAMI_TAG = {
+  en: ' #tsunami', ja: ' #津波 #tsunami', zh: ' #海啸 #tsunami',
+  hi: ' #सुनामी #tsunami', es: ' #tsunami', ar: ' #تسونامي #tsunami',
+};
+
+function tsu(q, lang) {
+  return q.tsunami ? TSUNAMI_LINE[lang] + '\n' : '';
+}
+function tsuTag(q, lang) {
+  return q.tsunami ? (TSUNAMI_TAG[lang] || ' #tsunami') : '';
+}
+
 const TEMPLATES = {
   en: (q, url) =>
-    `🌍 M${q.mag.toFixed(1)} earthquake\n📍 ${q.place}\n📏 Depth: ${Math.round(q.depth)} km · ${timeAgo(q.time)}\n🔗 ${url}\n#earthquake #seismic`,
+    `🌍 M${q.mag.toFixed(1)} earthquake\n${tsu(q, 'en')}📍 ${q.place}\n📏 Depth: ${Math.round(q.depth)} km · ${timeAgo(q.time)}\n🔗 ${url}\n#earthquake #seismic${tsuTag(q, 'en')}`,
 
   ja: (q, url) =>
-    `🌍 M${q.mag.toFixed(1)} の地震が発生しました\n📍 ${q.place}\n📏 深さ: ${Math.round(q.depth)} km · ${timeAgo(q.time)}\n🔗 ${url}\n#地震 #earthquake`,
+    `🌍 M${q.mag.toFixed(1)} の地震が発生しました\n${tsu(q, 'ja')}📍 ${q.place}\n📏 深さ: ${Math.round(q.depth)} km · ${timeAgo(q.time)}\n🔗 ${url}\n#地震 #earthquake${tsuTag(q, 'ja')}`,
 
   zh: (q, url) =>
-    `🌍 发生 M${q.mag.toFixed(1)} 地震\n📍 ${q.place}\n📏 深度：${Math.round(q.depth)} 公里 · ${timeAgo(q.time)}\n🔗 ${url}\n#地震 #earthquake`,
+    `🌍 发生 M${q.mag.toFixed(1)} 地震\n${tsu(q, 'zh')}📍 ${q.place}\n📏 深度：${Math.round(q.depth)} 公里 · ${timeAgo(q.time)}\n🔗 ${url}\n#地震 #earthquake${tsuTag(q, 'zh')}`,
 
   hi: (q, url) =>
-    `🌍 M${q.mag.toFixed(1)} भूकंप आया\n📍 ${q.place}\n📏 गहराई: ${Math.round(q.depth)} km · ${timeAgo(q.time)}\n🔗 ${url}\n#भूकंप #earthquake`,
+    `🌍 M${q.mag.toFixed(1)} भूकंप आया\n${tsu(q, 'hi')}📍 ${q.place}\n📏 गहराई: ${Math.round(q.depth)} km · ${timeAgo(q.time)}\n🔗 ${url}\n#भूकंप #earthquake${tsuTag(q, 'hi')}`,
 
   es: (q, url) =>
-    `🌍 Sismo M${q.mag.toFixed(1)}\n📍 ${q.place}\n📏 Profundidad: ${Math.round(q.depth)} km · ${timeAgo(q.time)}\n🔗 ${url}\n#sismo #terremoto #earthquake`,
+    `🌍 Sismo M${q.mag.toFixed(1)}\n${tsu(q, 'es')}📍 ${q.place}\n📏 Profundidad: ${Math.round(q.depth)} km · ${timeAgo(q.time)}\n🔗 ${url}\n#sismo #terremoto #earthquake${tsuTag(q, 'es')}`,
 
   ar: (q, url) =>
-    `🌍 زلزال بقوة M${q.mag.toFixed(1)}\n📍 ${q.place}\n📏 العمق: ${Math.round(q.depth)} كم · ${timeAgo(q.time)}\n🔗 ${url}\n#زلزال #earthquake`,
+    `🌍 زلزال بقوة M${q.mag.toFixed(1)}\n${tsu(q, 'ar')}📍 ${q.place}\n📏 العمق: ${Math.round(q.depth)} كم · ${timeAgo(q.time)}\n🔗 ${url}\n#زلزال #earthquake${tsuTag(q, 'ar')}`,
 };
 
 // ─────────────────────────────────────────────
@@ -202,11 +225,12 @@ async function main() {
   let posted = 0;
   for (const f of fresh) {
     const q = {
-      id:    f.id,
-      mag:   f.properties.mag || 0,
-      place: f.properties.place || 'Unknown location',
-      depth: f.geometry.coordinates[2] || 0,
-      time:  f.properties.time,
+      id:      f.id,
+      mag:     f.properties.mag || 0,
+      place:   f.properties.place || 'Unknown location',
+      depth:   f.geometry.coordinates[2] || 0,
+      time:    f.properties.time,
+      tsunami: f.properties.tsunami === 1,  // USGS の津波フラグ
     };
 
     const lang = detectLang(q.place);
@@ -246,3 +270,4 @@ main().catch(err => {
   console.error('Fatal error:', err);
   process.exit(1);
 });
+
