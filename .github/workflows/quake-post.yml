@@ -1,0 +1,51 @@
+name: Auto-post M4.5+ earthquakes (Bluesky / Mastodon)
+
+on:
+  schedule:
+    # 5分ごとに実行（GitHub Actionsの最小間隔）
+    - cron: '*/5 * * * *'
+  workflow_dispatch:   # 手動実行ボタンも有効化
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # posted.json をリポジトリに書き戻すため
+
+    concurrency:
+      group: quake-post   # 同時実行を防ぎ、状態ファイルの競合を回避
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+        working-directory: scripts
+
+      - name: Run quake-post
+        env:
+          # Bluesky（使う場合のみ設定。未設定ならスキップされます）
+          BLUESKY_HANDLE:        ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD:  ${{ secrets.BLUESKY_APP_PASSWORD }}
+          # Mastodon（使う場合のみ設定。未設定ならスキップされます）
+          MASTODON_BASE_URL:     ${{ secrets.MASTODON_BASE_URL }}
+          MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
+          # 共通設定
+          SITE_URL:              ${{ vars.SITE_URL }}
+          MIN_MAG:               ${{ vars.MIN_MAG }}
+        run: node quake-post.js
+        working-directory: scripts
+
+      - name: Commit posted.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain scripts/posted.json)" ]; then
+            git add scripts/posted.json
+            git commit -m "chore: update posted earthquakes [skip ci]"
+            git push
+          else
+            echo "posted.json unchanged; nothing to commit."
+          fi
