@@ -14,12 +14,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
+        uses: actions/checkout@v5
 
       - name: Run quake-post
         env:
@@ -34,3 +29,4 @@ jobs:
           MIN_MAG:               ${{ vars.MIN_MAG }}
         run: node quake-post.js
         working-directory: scripts
+
