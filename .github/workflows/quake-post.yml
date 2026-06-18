@@ -10,7 +10,11 @@ jobs:
   post:
     runs-on: ubuntu-latest
     permissions:
-      contents: none   # ファイルへの書き込み不要
+      contents: write   # posted.json をリポジトリに書き戻すため
+
+    concurrency:
+      group: quake-post   # 同時実行を防ぎ、状態ファイルの競合を回避
+      cancel-in-progress: false
 
     steps:
       - name: Checkout
@@ -30,3 +34,14 @@ jobs:
         run: node quake-post.js
         working-directory: scripts
 
+      - name: Commit posted.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain scripts/posted.json)" ]; then
+            git add scripts/posted.json
+            git commit -m "chore: update posted earthquakes [skip ci]"
+            git push
+          else
+            echo "posted.json unchanged; nothing to commit."
+          fi
