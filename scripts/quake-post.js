@@ -22,6 +22,9 @@ const STATE_FILE = path.join(__dirname, 'posted.json');
 // 状態記録の保持期間（USGSフィードは過去1時間なので3時間あれば十分）
 const STATE_TTL_MS = 3 * 60 * 60 * 1000;
 
+// 初回実行時に過去フィードからさかのぼって投稿する最大件数（スパム防止の上限）
+const BACKFILL_CAP = parseInt(process.env.BACKFILL_CAP || '6', 10);
+
 // 公開サイトの URL（GitHub Variables の SITE_URL で上書き可）
 const SITE_URL = process.env.SITE_URL || 'https://exquisite-crumble-17f890.netlify.app/';
 
@@ -226,17 +229,18 @@ async function main() {
 
   console.log(`${candidates.length} new earthquakes ≥ M${MIN_MAG} not yet posted`);
 
-  // 初回実行（記録ファイルなし）は、過去1時間分を一斉に投稿してしまわないよう
-  // 現在のフィードを「投稿済み」として記録だけして終了（スパム防止）
-  if (firstRun) {
-    for (const f of features) state[f.id] = f.properties.time;
-    saveState(state);
-    console.log('First run: seeded state with current feed; no posts sent. Future quakes will post.');
-    return;
+  // 初回実行（記録ファイルなし）でも、直近の地震は投稿する（取りこぼし防止）。
+  // ただし過去1時間分を大量に出さないよう、新しい順に最大 BACKFILL_CAP 件に制限。
+  if (firstRun && candidates.length > BACKFILL_CAP) {
+    const dropped = candidates.slice(0, candidates.length - BACKFILL_CAP);
+    for (const f of dropped) state[f.id] = f.properties.time;  // 古い超過分は記録だけ
+    candidates = candidates.slice(candidates.length - BACKFILL_CAP);
+    console.log(`First run: capped backfill to the ${BACKFILL_CAP} most recent quakes.`);
   }
 
   if (candidates.length === 0) {
     console.log('No new earthquakes to post.');
+    saveState(state);
     return;
   }
 
