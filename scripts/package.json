@@ -1,0 +1,9 @@
+{
+  "name": "quake-tweet",
+  "version": "1.0.0",
+  "description": "Auto-tweet M4.5+ earthquakes",
+  "main": "quake-tweet.js",
+  "dependencies": {
+    "twitter-api-v2": "^1.17.0"
+  }
+}
