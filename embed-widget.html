@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Embed the Globe widget</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg:#f1eee8; --panel:#fbfaf7; --ink:#2c2a27; --muted:#8c887f; --quake:#cf4f2e; --line:rgba(44,42,39,.14); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "Noto Sans", "Noto Sans JP", "Noto Sans SC", "Noto Sans Devanagari", "Noto Sans Arabic", system-ui, sans-serif;
+    line-height: 1.6; padding: 36px 24px 80px;
+  }
+  .container { max-width: 880px; margin: 0 auto; }
+  .langbar { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 5px; margin-bottom: 24px; }
+  .langbar button { font: inherit; font-size: 12px; font-weight: 600; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 100px; padding: 4px 12px; cursor: pointer; transition: background .2s, color .2s; }
+  .langbar button:hover { border-color: rgba(44,42,39,.32); }
+  .langbar button.on { background: var(--ink); color: #f1eee8; border-color: var(--ink); }
+
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--quake); margin-bottom: 12px; }
+  h1 { font-size: 38px; font-weight: 700; letter-spacing: -.02em; margin: 0 0 14px; text-wrap: balance; }
+  .lead { font-size: 16px; color: #555049; max-width: 60ch; margin: 0 0 16px; text-wrap: pretty; }
+  .back { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--ink); text-decoration: none; }
+  .back:hover { color: var(--quake); }
+  .intro-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .support-btn { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; color: var(--ink); text-decoration: none; border: 1px solid rgba(44,42,39,.22); border-radius: 999px; padding: 6px 14px; background: var(--panel); transition: background .2s, border-color .2s, color .2s; }
+  .support-btn:hover { border-color: var(--ink); background: var(--ink); color: #f1eee8; }
+  .support-btn svg { width: 15px; height: 15px; }
+
+  .opt { margin-top: 48px; }
+  .opt h2 { font-size: 15px; font-weight: 700; margin: 0 0 4px; display: flex; align-items: baseline; gap: 10px; }
+  .opt h2 .tag { font-size: 12px; font-weight: 600; color: var(--quake); background: rgba(207,79,46,.1); padding: 2px 9px; border-radius: 100px; letter-spacing: .03em; }
+  .opt .desc { font-size: 13.5px; color: var(--muted); margin: 0 0 16px; }
+
+  .preview { display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+  .frame-box { flex: none; border: 1px solid var(--line); box-shadow: 0 6px 22px rgba(44,42,39,.07); background: #f1eee8; }
+  iframe { display: block; border: 0; width: 480px; height: 280px; }
+
+  .code { flex: 1 1 340px; min-width: 300px; }
+  .code pre {
+    margin: 0; padding: 16px 18px; background: #2c2a27; color: #e9e5dc;
+    border-radius: 10px; font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    font-size: 12.5px; line-height: 1.7; overflow-x: auto; white-space: pre-wrap; word-break: break-all;
+    direction: ltr; text-align: left;
+  }
+  .copy {
+    margin-top: 10px; display: inline-flex; align-items: center; gap: 7px;
+    font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 15px; cursor: pointer; transition: background .2s, border-color .2s;
+  }
+  .copy:hover { background: #fff; border-color: rgba(44,42,39,.3); }
+  .copy.done { color: #1f8a5b; border-color: rgba(31,138,91,.4); }
+  .copy svg { width: 15px; height: 15px; }
+
+  .note { margin-top: 56px; padding: 22px 24px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  .note h3 { margin: 0 0 10px; font-size: 15px; }
+  .note ul { margin: 0; padding-inline-start: 20px; font-size: 14px; color: #555049; }
+  .note li { margin: 5px 0; }
+  .note code { background: rgba(44,42,39,.08); padding: 1px 6px; border-radius: 4px; font-size: 13px; direction: ltr; unicode-bidi: embed; }
+
+  [dir="rtl"] .langbar { justify-content: flex-start; }
+  @media (max-width: 560px) { iframe { width: 100%; max-width: 480px; } .frame-box { width: 100%; } h1 { font-size: 30px; } }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="langbar" id="langbar"></div>
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="h1"></h1>
+    <p class="lead" id="lead"></p>
+    <div class="intro-actions">
+      <a class="back" id="back" href="https://globelabo.netlify.app/" target="_blank" rel="noopener"></a>
+      <a class="support-btn" id="coffee" href="https://buymeacoffee.com/globelabo" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h13v4a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Z"></path><path d="M17 10h2.5a2.5 2.5 0 0 1 0 5H17"></path><line x1="7" y1="3" x2="7" y2="5.5"></line><line x1="10.5" y1="3" x2="10.5" y2="5.5"></line><line x1="14" y1="3" x2="14" y2="5.5"></line></svg><span id="coffee-label"></span></a>
+    </div>
+
+    <div class="opt">
+      <h2><span id="full-h"></span> <span class="tag" id="full-tag"></span></h2>
+      <p class="desc" id="full-desc"></p>
+      <div class="preview">
+        <div class="frame-box"><iframe id="if-full" src="embed.html?v=full" title="Globe widget — full" loading="lazy"></iframe></div>
+        <div class="code">
+          <pre id="code-full"></pre>
+          <button class="copy" data-target="code-full"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="cl"></span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="opt">
+      <h2><span id="latest-h"></span> <span class="tag" id="latest-tag"></span></h2>
+      <p class="desc" id="latest-desc"></p>
+      <div class="preview">
+        <div class="frame-box"><iframe id="if-latest" src="embed.html?v=latest" title="Globe widget — latest" loading="lazy"></iframe></div>
+        <div class="code">
+          <pre id="code-latest"></pre>
+          <button class="copy" data-target="code-latest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="cl"></span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <h3 id="note-h"></h3>
+      <ul id="note-list"></ul>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    const SITE = 'https://globelabo.netlify.app';
+    const TR = {
+      en: { dir:'ltr', name:'English',
+        eyebrow:'Embed widget', h1:'Put Globe on your site',
+        lead:'A self-updating earthquake widget for blogs and news articles. It shows the latest quakes worldwide in real time, and clicking it opens the site in a new tab. Just copy the code and paste.',
+        back:'← Back to Globe', copy:'Copy code', copied:'Copied ✓',
+        fullH:'Full', fullTag:'recommended', fullDesc:'Globe + latest quake (M, location, time) + total count + link. The best balance of information and appeal.',
+        latestH:'Latest only', latestTag:'simple', latestDesc:'Globe + the latest quake only. A lighter look without the total count.',
+        noteH:'Tips', notes:[
+          'Resize freely by editing <code>width</code> / <code>height</code> (≈480×280 works well for a banner).',
+          'The widget language follows this page — switch the language above and the embed code updates.',
+          'Data is USGS “past 7 days, M2.5+”, refreshed each time the page loads.',
+          'On WordPress, paste it into a “Custom HTML” block.',
+        ] },
+      zh: { dir:'ltr', name:'中文',
+        eyebrow:'嵌入小组件', h1:'把 Globe 放到你的网站',
+        lead:'适用于博客和新闻文章的自动更新地震小组件。实时显示全球最新地震，点击后在新标签页打开本站。复制代码粘贴即可。',
+        back:'← 返回 Globe', copy:'复制代码', copied:'已复制 ✓',
+        fullH:'完整', fullTag:'推荐', fullDesc:'地球仪＋最新地震（震级・地点・时间）＋总次数＋入口。信息量与吸引力最平衡。',
+        latestH:'仅最新地震', latestTag:'简洁', latestDesc:'地球仪＋仅最新地震。省去总次数，更轻快。',
+        noteH:'使用提示', notes:[
+          '可自由调整大小，编辑 <code>width</code> / <code>height</code>（横幅约 480×280 为宜）。',
+          '小组件语言跟随本页 — 切换上方语言，嵌入代码会随之更新。',
+          '数据为 USGS「过去7天 M2.5+」，每次打开页面时刷新。',
+          '在 WordPress 中，请粘贴到「自定义 HTML」区块。',
+        ] },
+      hi: { dir:'ltr', name:'हिन्दी',
+        eyebrow:'एम्बेड विजेट', h1:'Globe को अपनी साइट पर लगाएँ',
+        lead:'ब्लॉग और समाचार लेखों के लिए स्वतः-अपडेट होने वाला भूकंप विजेट। यह दुनिया भर के नवीनतम भूकंप रीयल-टाइम में दिखाता है, और क्लिक करने पर साइट नए टैब में खुलती है। बस कोड कॉपी करके पेस्ट करें।',
+        back:'← Globe पर वापस', copy:'कोड कॉपी करें', copied:'कॉपी हुआ ✓',
+        fullH:'पूर्ण', fullTag:'अनुशंसित', fullDesc:'ग्लोब + नवीनतम भूकंप (तीव्रता, स्थान, समय) + कुल संख्या + लिंक। जानकारी और प्रभाव का सर्वश्रेष्ठ संतुलन।',
+        latestH:'केवल नवीनतम', latestTag:'सरल', latestDesc:'ग्लोब + केवल नवीनतम भूकंप। कुल संख्या के बिना हल्का रूप।',
+        noteH:'सुझाव', notes:[
+          '<code>width</code> / <code>height</code> बदलकर आकार स्वतंत्र रूप से बदलें (बैनर के लिए ≈480×280 अच्छा है)।',
+          'विजेट की भाषा इस पेज के अनुसार होती है — ऊपर भाषा बदलें, एम्बेड कोड अपडेट हो जाएगा।',
+          'डेटा USGS “पिछले 7 दिन, M2.5+” है, हर बार पेज लोड होने पर ताज़ा होता है।',
+          'WordPress में इसे “Custom HTML” ब्लॉक में पेस्ट करें।',
+        ] },
+      es: { dir:'ltr', name:'Español',
+        eyebrow:'Widget para insertar', h1:'Pon Globe en tu sitio',
+        lead:'Un widget de sismos que se actualiza solo, para blogs y noticias. Muestra los últimos sismos del mundo en tiempo real y, al hacer clic, abre el sitio en una pestaña nueva. Solo copia el código y pégalo.',
+        back:'← Volver a Globe', copy:'Copiar código', copied:'Copiado ✓',
+        fullH:'Completo', fullTag:'recomendado', fullDesc:'Globo + último sismo (magnitud, lugar, hora) + total + enlace. El mejor equilibrio entre información y atractivo.',
+        latestH:'Solo el último', latestTag:'simple', latestDesc:'Globo + solo el último sismo. Un aspecto más ligero sin el total.',
+        noteH:'Consejos', notes:[
+          'Cambia el tamaño editando <code>width</code> / <code>height</code> (≈480×280 va bien para un banner).',
+          'El idioma del widget sigue a esta página: cambia el idioma arriba y el código se actualiza.',
+          'Los datos son de USGS “últimos 7 días, M2.5+”, y se actualizan al cargar la página.',
+          'En WordPress, pégalo en un bloque “HTML personalizado”.',
+        ] },
+      ar: { dir:'rtl', name:'العربية',
+        eyebrow:'أداة التضمين', h1:'أضف Globe إلى موقعك',
+        lead:'أداة زلازل ذاتية التحديث للمدونات والمقالات الإخبارية. تعرض أحدث الزلازل حول العالم لحظياً، وبالنقر تفتح الموقع في تبويب جديد. ما عليك سوى نسخ الكود ولصقه.',
+        back:'← العودة إلى Globe', copy:'نسخ الكود', copied:'تم النسخ ✓',
+        fullH:'كامل', fullTag:'موصى به', fullDesc:'كرة أرضية + آخر زلزال (القوة، المكان، الوقت) + الإجمالي + رابط. أفضل توازن بين المعلومات والجاذبية.',
+        latestH:'الأحدث فقط', latestTag:'بسيط', latestDesc:'كرة أرضية + آخر زلزال فقط. مظهر أخف بدون الإجمالي.',
+        noteH:'نصائح', notes:[
+          'غيّر الحجم بحرية بتعديل <code>width</code> / <code>height</code> (≈480×280 مناسب للافتة).',
+          'لغة الأداة تتبع هذه الصفحة — بدّل اللغة بالأعلى وسيتحدّث كود التضمين.',
+          'البيانات من USGS «آخر 7 أيام، M2.5+»، وتُحدَّث عند كل فتح للصفحة.',
+          'في ووردبريس، الصقه في كتلة «HTML مخصص».',
+        ] },
+      ja: { dir:'ltr', name:'日本語',
+        eyebrow:'Embed widget', h1:'あなたのサイトに Globe を埋め込む',
+        lead:'ブログやニュース記事に貼れる、自動更新の地震ウィジェットです。世界の最新地震をリアルタイムに表示し、クリックすると本サイトが新しいタブで開きます。下のコードをコピーして貼るだけ。',
+        back:'← Globe 本サイトへ', copy:'コードをコピー', copied:'コピーしました ✓',
+        fullH:'フル', fullTag:'おすすめ', fullDesc:'地球儀＋最新地震（M・震源地・経過時間）＋総件数＋導線。情報量と訴求力のバランスが最良。',
+        latestH:'最新地震のみ', latestTag:'シンプル', latestDesc:'地球儀＋最新地震だけ。総件数を省いた、余白のある軽快な見た目。',
+        noteH:'使い方のヒント', notes:[
+          'サイズは自由に変更できます。<code>width</code> / <code>height</code> を編集してください（横長なら 480×280 前後が目安）。',
+          'ウィジェットの言語はこのページに連動します。上で言語を切り替えると、コードも更新されます。',
+          'データは USGS の「過去7日間 M2.5+」を自動取得し、ページを開くたびに最新化されます。',
+          'WordPress では「カスタムHTML」ブロックに貼り付けてください。',
+        ] },
+    };
+    const ORDER = ['en','zh','hi','es','ar','ja'];
+    const SUPPORT = { en:'Buy me a coffee', zh:'请我喝杯咖啡', hi:'मुझे कॉफ़ी पिलाएँ', es:'Invítame un café', ar:'ادعمني بقهوة', ja:'コーヒーを一杯' };
+    let lang = localStorage.getItem('globe-lang') || 'ja';
+    if (!TR[lang]) lang = 'ja';
+
+    const $ = id => document.getElementById(id);
+
+    function langParam() { return lang === 'ja' ? '' : ('&amp;lang=' + lang); }
+    function snippet(v) {
+      const lp = lang === 'ja' ? '' : ('&amp;lang=' + lang);
+      return `<iframe src="${SITE}/embed.html?v=${v}${lp}"\n        style="width:100%; max-width:480px; height:280px; border:0"\n        title="Globe — live earthquakes" loading="lazy"></iframe>`;
+    }
+
+    function apply() {
+      const T = TR[lang];
+      document.documentElement.lang = lang;
+      document.documentElement.dir = T.dir;
+      $('eyebrow').textContent = T.eyebrow;
+      $('h1').textContent = T.h1;
+      $('lead').textContent = T.lead;
+      $('back').textContent = T.back;
+      $('coffee-label').textContent = SUPPORT[lang] || SUPPORT.en;
+      $('full-h').textContent = T.fullH; $('full-tag').textContent = T.fullTag; $('full-desc').textContent = T.fullDesc;
+      $('latest-h').textContent = T.latestH; $('latest-tag').textContent = T.latestTag; $('latest-desc').textContent = T.latestDesc;
+      $('note-h').textContent = T.noteH;
+      $('note-list').innerHTML = T.notes.map(n => '<li>' + n + '</li>').join('');
+      document.querySelectorAll('.copy .cl').forEach(el => el.textContent = T.copy);
+
+      // live previews + snippets follow the chosen language
+      const lp = lang === 'ja' ? '' : ('&lang=' + lang);
+      $('if-full').src = 'embed.html?v=full' + lp;
+      $('if-latest').src = 'embed.html?v=latest' + lp;
+      $('code-full').textContent = snippet('full');
+      $('code-latest').textContent = snippet('latest');
+
+      // langbar
+      const bar = $('langbar'); bar.innerHTML = '';
+      ORDER.forEach(code => {
+        const b = document.createElement('button');
+        b.textContent = TR[code].name;
+        if (code === lang) b.classList.add('on');
+        b.addEventListener('click', () => { lang = code; localStorage.setItem('globe-lang', code); apply(); });
+        bar.appendChild(b);
+      });
+    }
+
+    document.querySelectorAll('.copy').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const pre = document.getElementById(btn.dataset.target);
+        try { await navigator.clipboard.writeText(pre.textContent); }
+        catch { const r = document.createRange(); r.selectNode(pre); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy'); getSelection().removeAllRanges(); }
+        const label = btn.querySelector('.cl');
+        btn.classList.add('done'); label.textContent = TR[lang].copied;
+        setTimeout(() => { btn.classList.remove('done'); label.textContent = TR[lang].copy; }, 1800);
+      });
+    });
+
+    apply();
+  })();
+  </script>
+</body>
+</html>

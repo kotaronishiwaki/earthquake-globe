@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Magnitude energy comparison — Globe</title>
+<meta name="description" content="One step up in magnitude ≈ 32× the energy; two steps ≈ 1000×. Slide the magnitudes and feel the difference in TNT equivalent." />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:#f1eee8; --panel:#fbfaf7; --ink:#2c2a27; --muted:#8c887f;
+    --a:#2c2a27; --b:#cf4f2e; --line:rgba(44,42,39,.14);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "Noto Sans", "Noto Sans JP", "Noto Sans SC", "Noto Sans Devanagari", "Noto Sans Arabic", system-ui, sans-serif;
+    line-height: 1.6; padding: 36px 24px 72px;
+  }
+  .container { max-width: 940px; margin: 0 auto; }
+  .langbar { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 5px; margin-bottom: 24px; }
+  .langbar button { font: inherit; font-size: 12px; font-weight: 600; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 100px; padding: 4px 12px; cursor: pointer; transition: background .2s, color .2s; }
+  .langbar button:hover { border-color: rgba(44,42,39,.32); }
+  .langbar button.on { background: var(--ink); color: #f1eee8; border-color: var(--ink); }
+
+  .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--b); margin-bottom: 12px; }
+  h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 800; letter-spacing: -.025em; margin: 0 0 16px; line-height: 1.12; text-wrap: balance; }
+  .lead { font-size: 16.5px; color: #555049; max-width: 62ch; margin: 0; text-wrap: pretty; }
+  .lead b { color: var(--ink); font-weight: 700; }
+
+  .hero { margin: 44px 0 8px; display: grid; grid-template-columns: 380px 1fr; gap: 36px; align-items: center; }
+  .viz { position: relative; width: 380px; height: 380px; }
+  .viz svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .tiny-note { position: absolute; left: 0; right: 0; bottom: -6px; text-align: center; font-size: 12px; color: var(--muted); }
+
+  .readout { display: flex; flex-direction: column; gap: 6px; }
+  .ratio-label { font-size: 16px; color: #555049; }
+  .ratio-label b { color: var(--ink); font-weight: 700; }
+  .ratio { font-size: clamp(56px, 10vw, 92px); font-weight: 800; line-height: .95; letter-spacing: -.03em; color: var(--b); }
+  .ratio small { font-size: .42em; font-weight: 700; color: var(--ink); letter-spacing: 0; }
+  .ratio-sub { font-size: 15px; color: #555049; margin-top: 2px; }
+  .ratio-sub b { color: var(--ink); font-weight: 700; }
+  .energy-rows { margin-top: 22px; display: flex; flex-direction: column; gap: 12px; }
+  .erow { display: flex; align-items: baseline; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .swatch { width: 12px; height: 12px; border-radius: 50%; flex: none; transform: translateY(1px); }
+  .erow .who { font-size: 14px; font-weight: 600; min-width: 88px; }
+  .erow .tnt { font-size: 17px; font-weight: 700; margin-left: auto; white-space: nowrap; }
+  .erow .tnt span { font-size: 13px; color: var(--muted); font-weight: 500; }
+
+  .controls { margin-top: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .ctl { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; }
+  .ctl .top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .ctl .name { font-size: 13px; font-weight: 700; letter-spacing: .03em; display: flex; align-items: center; gap: 7px; }
+  .ctl .name .swatch { width: 11px; height: 11px; }
+  .ctl .mval { font-size: 40px; font-weight: 800; letter-spacing: -.02em; line-height: 1; white-space: nowrap; }
+  .ctl[data-k="a"] .mval { color: var(--a); }
+  .ctl[data-k="b"] .mval { color: var(--b); }
+  .ctl .tntline { font-size: 13.5px; color: var(--muted); margin-top: 2px; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 4px; background: rgba(44,42,39,.18); margin: 20px 0 4px; cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid var(--ink); cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+  .ctl[data-k="a"] input[type=range]::-webkit-slider-thumb { border-color: var(--a); }
+  .ctl[data-k="b"] input[type=range]::-webkit-slider-thumb { border-color: var(--b); }
+  input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid var(--ink); cursor: pointer; }
+  .scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+
+  .presets { margin-top: 34px; }
+  .presets .ph { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .presets .ph h3 { font-size: 14px; font-weight: 700; margin: 0; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+  .seg button { font-family: inherit; font-size: 12.5px; font-weight: 600; border: 0; background: transparent; color: var(--muted); padding: 6px 14px; cursor: pointer; }
+  .seg button.on { background: var(--ink); color: #f1eee8; }
+  .pgroup { margin-bottom: 14px; }
+  .pgroup .glabel { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip { font-family: inherit; text-align: start; cursor: pointer; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; transition: border-color .2s, transform .1s, background .2s; }
+  .chip:hover { border-color: rgba(44,42,39,.32); background: #fff; }
+  .chip:active { transform: translateY(1px); }
+  .chip .cn { display: block; font-size: 13.5px; font-weight: 600; }
+  .chip .cn .yr { color: var(--muted); font-weight: 500; }
+  .chip .cm { display: block; font-size: 12px; color: var(--b); font-weight: 700; margin-top: 1px; }
+
+  .foot { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: center; justify-content: space-between; }
+  .formula { font-size: 13px; color: var(--muted); max-width: 56ch; text-wrap: pretty; }
+  .formula code { background: rgba(44,42,39,.07); padding: 1px 6px; border-radius: 4px; font-size: 12.5px; }
+  .actions { display: flex; gap: 10px; flex: none; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; font-family: inherit; font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer; padding: 10px 16px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); transition: background .2s, border-color .2s; }
+  .btn:hover { background: #fff; border-color: rgba(44,42,39,.3); }
+  .btn.primary { background: var(--ink); color: #f1eee8; border-color: var(--ink); }
+  .btn.primary:hover { background: #1c1a18; }
+  .btn.done { color: #1f8a5b; }
+  .btn svg { width: 15px; height: 15px; }
+
+  [dir="rtl"] .langbar { justify-content: flex-start; }
+  [dir="rtl"] .erow .tnt { margin-left: 0; margin-right: auto; }
+
+  @media (max-width: 760px) {
+    .hero { grid-template-columns: 1fr; gap: 8px; justify-items: center; }
+    .viz { width: 300px; height: 300px; }
+    .readout { align-items: center; text-align: center; width: 100%; max-width: 380px; }
+    .erow { width: 100%; }
+    .controls { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="langbar" id="langbar"></div>
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="h1"></h1>
+    <p class="lead" id="lead"></p>
+
+    <div class="hero">
+      <div class="viz">
+        <svg viewBox="0 0 380 380" aria-hidden="true">
+          <circle id="circle-big" cx="190" cy="190" r="150" fill="none"></circle>
+          <circle id="circle-small" cx="190" cy="190" r="40" fill="none"></circle>
+          <text id="lbl-big" x="190" text-anchor="middle" font-weight="800" font-size="22" fill="#2c2a27"></text>
+          <text id="lbl-small" x="190" text-anchor="middle" font-weight="800" font-size="18" fill="#fff"></text>
+        </svg>
+        <div class="tiny-note" id="tiny-note"></div>
+      </div>
+      <div class="readout">
+        <div class="ratio-label" id="ratio-who"></div>
+        <div class="ratio" id="ratio"></div>
+        <div class="ratio-sub" id="ratio-sub"></div>
+        <div class="energy-rows">
+          <div class="erow">
+            <span class="swatch" style="background:var(--a)"></span>
+            <span class="who" id="who-a"></span>
+            <span class="tnt" id="tnt-a">—</span>
+          </div>
+          <div class="erow">
+            <span class="swatch" style="background:var(--b)"></span>
+            <span class="who" id="who-b"></span>
+            <span class="tnt" id="tnt-b">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="ctl" data-k="a">
+        <div class="top">
+          <span class="name"><span class="swatch" style="background:var(--a)"></span><span id="name-a"></span></span>
+          <span class="mval" id="mval-a">M7.3</span>
+        </div>
+        <div class="tntline" id="tntline-a"></div>
+        <input type="range" id="slider-a" min="4" max="9.5" step="0.1" value="7.3" />
+        <div class="scale"><span>M4</span><span>M6</span><span>M8</span><span>M9.5</span></div>
+      </div>
+      <div class="ctl" data-k="b">
+        <div class="top">
+          <span class="name"><span class="swatch" style="background:var(--b)"></span><span id="name-b"></span></span>
+          <span class="mval" id="mval-b">M9.0</span>
+        </div>
+        <div class="tntline" id="tntline-b"></div>
+        <input type="range" id="slider-b" min="4" max="9.5" step="0.1" value="9.0" />
+        <div class="scale"><span>M4</span><span>M6</span><span>M8</span><span>M9.5</span></div>
+      </div>
+    </div>
+
+    <div class="presets">
+      <div class="ph">
+        <h3 id="presets-title"></h3>
+        <div class="seg" id="seg">
+          <button data-t="a" id="seg-a"></button>
+          <button data-t="b" id="seg-b" class="on"></button>
+        </div>
+      </div>
+      <div id="chip-area"></div>
+    </div>
+
+    <div class="foot">
+      <div class="formula" id="formula"></div>
+      <div class="actions">
+        <a class="btn coffee" id="coffee" href="https://buymeacoffee.com/globelabo" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h13v4a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Z"></path><path d="M17 10h2.5a2.5 2.5 0 0 1 0 5H17"></path><line x1="7" y1="3" x2="7" y2="5.5"></line><line x1="10.5" y1="3" x2="10.5" y2="5.5"></line><line x1="14" y1="3" x2="14" y2="5.5"></line></svg><span id="coffee-label"></span></a>
+        <button class="btn" id="share-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg><span id="share-label"></span></button>
+        <a class="btn primary" id="cta-globe" href="https://globelabo.netlify.app/" target="_blank" rel="noopener"></a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    const PRESETS = [
+      { id:'hanshin',  y:1995, m:7.3, region:'jp' },
+      { id:'kumamoto', y:2016, m:7.3, region:'jp' },
+      { id:'noto',     y:2024, m:7.6, region:'jp' },
+      { id:'tohoku',   y:2011, m:9.0, region:'jp' },
+      { id:'sumatra',  y:2004, m:9.1, region:'world' },
+      { id:'turkey',   y:2023, m:7.8, region:'world' },
+      { id:'nepal',    y:2015, m:7.8, region:'world' },
+      { id:'sichuan',  y:2008, m:7.9, region:'world' },
+      { id:'chile',    y:1960, m:9.5, region:'world' },
+    ];
+    const NAMES = {
+      hanshin:  { ja:'阪神・淡路大震災', en:'Great Hanshin earthquake', zh:'阪神大地震', hi:'हानशिन भूकंप', es:'Terremoto de Kobe', ar:'زلزال هانشين (كوبه)' },
+      kumamoto: { ja:'熊本地震', en:'Kumamoto earthquake', zh:'熊本地震', hi:'कुमामोतो भूकंप', es:'Terremoto de Kumamoto', ar:'زلزال كوماموتو' },
+      noto:     { ja:'能登半島地震', en:'Noto Peninsula earthquake', zh:'能登半岛地震', hi:'नोतो प्रायद्वीप भूकंप', es:'Terremoto de Noto', ar:'زلزال شبه جزيرة نوتو' },
+      tohoku:   { ja:'東日本大震災', en:'Great Tōhoku earthquake', zh:'东日本大地震', hi:'तोहोकू भूकंप', es:'Terremoto de Tōhoku', ar:'زلزال توهوكو' },
+      sumatra:  { ja:'スマトラ島沖地震', en:'Sumatra–Andaman earthquake', zh:'苏门答腊地震', hi:'सुमात्रा भूकंप', es:'Terremoto de Sumatra', ar:'زلزال سومطرة' },
+      turkey:   { ja:'トルコ・シリア地震', en:'Turkey–Syria earthquake', zh:'土耳其-叙利亚地震', hi:'तुर्की-सीरिया भूकंप', es:'Terremoto de Turquía y Siria', ar:'زلزال تركيا وسوريا' },
+      nepal:    { ja:'ネパール地震', en:'Nepal (Gorkha) earthquake', zh:'尼泊尔地震', hi:'नेपाल भूकंप', es:'Terremoto de Nepal', ar:'زلزال نيبال' },
+      sichuan:  { ja:'四川大地震', en:'Sichuan earthquake', zh:'汶川大地震', hi:'सिचुआन भूकंप', es:'Terremoto de Sichuán', ar:'زلزال سيتشوان' },
+      chile:    { ja:'チリ地震（観測史上最大）', en:'Chile earthquake (largest ever)', zh:'智利大地震（史上最大）', hi:'चिली भूकंप (अब तक सबसे बड़ा)', es:'Terremoto de Chile (el mayor)', ar:'زلزال تشيلي (الأكبر تسجيلاً)' },
+    };
+
+    const TR = {
+      en: { dir:'ltr', locale:'en-US', name:'English',
+        mag:'Magnitude', h1:'M5 vs M7 — how different are they really?',
+        lead:'Magnitude is logarithmic. One step up is about <b>32×</b> the energy; two steps is about <b>1000×</b>. Drag the two magnitudes and compare the released energy as an amount of TNT.',
+        nameA:'Baseline (A)', nameB:'This quake (B)',
+        units:['kg','tons','kilotons','megatons','gigatons'],
+        tnt:(n,u)=>`${n} ${u} of TNT`,
+        who:'<b>{big}</b> releases', ratioUnit:'', sub:'× the energy of <b>{small}</b>',
+        equalWho:'Same energy', equalSub:'both release the same energy',
+        presetsTitle:'Apply a famous earthquake', toA:'to Baseline (A)', toB:'to This quake (B)',
+        gJp:'Japan', gWorld:'Worldwide',
+        formula:'Energy (joules) is estimated from <code>10^(1.5 × M + 4.8)</code> and shown as TNT equivalent (1 ton = 4.184×10⁹ J). Actual damage depends heavily on depth, distance and ground conditions.',
+        share:'Share', copied:'Link copied ✓', cta:'🌍 See live quakes on Globe',
+        tiny:'※ At the true ratio the smaller circle is too small to see.',
+        shareText:(a,b,r)=>`M${a} vs M${b}: about ${r}× the energy — an interactive magnitude comparison`,
+      },
+      zh: { dir:'ltr', locale:'zh-CN', name:'中文',
+        mag:'震级', h1:'M5 和 M7，到底差多少？',
+        lead:'震级是「对数」。每增加 <b>1</b>，能量约为 <b>32 倍</b>；增加 <b>2</b>，约为 <b>1000 倍</b>。拖动两个震级，用 TNT 炸药的当量来比较释放的能量。',
+        nameA:'基准 (A)', nameB:'这次地震 (B)',
+        units:['公斤','吨','千吨','百万吨','十亿吨'],
+        tnt:(n,u)=>`相当于 ${n} ${u} TNT`,
+        who:'<b>{big}</b> 是 <b>{small}</b> 的', ratioUnit:'倍', sub:'能量',
+        equalWho:'能量相同', equalSub:'两者释放的能量相同',
+        presetsTitle:'套用代表性地震', toA:'设为基准 (A)', toB:'设为这次地震 (B)',
+        gJp:'日本', gWorld:'世界',
+        formula:'能量（焦耳）由 <code>10^(1.5 × M + 4.8)</code> 估算，并换算为 TNT 当量（1 吨 = 4.184×10⁹ 焦耳）。实际灾害还取决于震源深度、距离与地质条件。',
+        share:'分享', copied:'链接已复制 ✓', cta:'🌍 在 Globe 查看全球地震',
+        tiny:'※ 按真实比例，较小的圆会小到看不见。',
+        shareText:(a,b,r)=>`M${a} 与 M${b}：能量约相差 ${r} 倍 — 互动式震级对比`,
+      },
+      hi: { dir:'ltr', locale:'hi-IN', name:'हिन्दी',
+        mag:'तीव्रता', h1:'M5 और M7 में असल में कितना फर्क है?',
+        lead:'तीव्रता लघुगणकीय है। <b>1</b> बढ़ने पर ऊर्जा लगभग <b>32 गुना</b>, <b>2</b> बढ़ने पर लगभग <b>1000 गुना</b> हो जाती है। दोनों तीव्रताएँ खिसकाएँ और निकली ऊर्जा की तुलना TNT की मात्रा में करें।',
+        nameA:'आधार (A)', nameB:'यह भूकंप (B)',
+        units:['kg','टन','किलोटन','मेगाटन','गीगाटन'],
+        tnt:(n,u)=>`${n} ${u} TNT के बराबर`,
+        who:'<b>{big}</b> की ऊर्जा', ratioUnit:' गुना', sub:'<b>{small}</b> से अधिक है',
+        equalWho:'समान ऊर्जा', equalSub:'दोनों समान ऊर्जा छोड़ते हैं',
+        presetsTitle:'कोई प्रसिद्ध भूकंप लागू करें', toA:'आधार (A) में', toB:'यह भूकंप (B) में',
+        gJp:'जापान', gWorld:'दुनिया भर',
+        formula:'ऊर्जा (जूल) का अनुमान <code>10^(1.5 × M + 4.8)</code> से लगाया गया है और TNT समतुल्य में दिखाया गया है (1 टन = 4.184×10⁹ J)। वास्तविक नुकसान गहराई, दूरी और भूमि पर निर्भर करता है।',
+        share:'साझा करें', copied:'लिंक कॉपी हुई ✓', cta:'🌍 Globe पर भूकंप देखें',
+        tiny:'※ वास्तविक अनुपात में छोटा वृत्त दिखने लायक नहीं रहता।',
+        shareText:(a,b,r)=>`M${a} बनाम M${b}: ऊर्जा लगभग ${r} गुना अलग — इंटरैक्टिव तीव्रता तुलना`,
+      },
+      es: { dir:'ltr', locale:'es-ES', name:'Español',
+        mag:'Magnitud', h1:'M5 vs M7: ¿qué tan diferentes son?',
+        lead:'La magnitud es logarítmica. Subir <b>1</b> es unas <b>32×</b> la energía; subir <b>2</b>, unas <b>1000×</b>. Mueve las dos magnitudes y compara la energía liberada como cantidad de TNT.',
+        nameA:'Base (A)', nameB:'Este sismo (B)',
+        units:['kg','toneladas','kilotones','megatones','gigatones'],
+        tnt:(n,u)=>`${n} ${u} de TNT`,
+        who:'La energía de <b>{big}</b> es', ratioUnit:'', sub:'veces la de <b>{small}</b>',
+        equalWho:'Misma energía', equalSub:'ambos liberan la misma energía',
+        presetsTitle:'Aplica un terremoto famoso', toA:'a Base (A)', toB:'a Este sismo (B)',
+        gJp:'Japón', gWorld:'Mundo',
+        formula:'La energía (julios) se estima con <code>10^(1.5 × M + 4.8)</code> y se muestra como equivalente en TNT (1 t = 4,184×10⁹ J). El daño real depende de la profundidad, la distancia y el terreno.',
+        share:'Compartir', copied:'Enlace copiado ✓', cta:'🌍 Ver sismos en Globe',
+        tiny:'※ A escala real, el círculo pequeño es casi invisible.',
+        shareText:(a,b,r)=>`M${a} vs M${b}: unas ${r}× de diferencia de energía — comparador interactivo de magnitudes`,
+      },
+      ar: { dir:'rtl', locale:'ar', name:'العربية',
+        mag:'القوة', h1:'M5 مقابل M7 — كم الفرق فعلاً؟',
+        lead:'القوة لوغاريتمية. كل زيادة بمقدار <b>1</b> تعني طاقة أكبر بنحو <b>32 مرة</b>، وبمقدار <b>2</b> بنحو <b>1000 مرة</b>. حرّك القيمتين وقارن الطاقة المنبعثة بكمية مادة TNT.',
+        nameA:'الأساس (A)', nameB:'هذا الزلزال (B)',
+        units:['كجم','طن','كيلوطن','ميغاطن','غيغاطن'],
+        tnt:(n,u)=>`${n} ${u} من مادة TNT`,
+        who:'طاقة <b>{big}</b>', ratioUnit:'', sub:'ضعف طاقة <b>{small}</b>',
+        equalWho:'الطاقة نفسها', equalSub:'كلاهما يطلق الطاقة نفسها',
+        presetsTitle:'طبّق زلزالاً مشهوراً', toA:'على الأساس (A)', toB:'على هذا الزلزال (B)',
+        gJp:'اليابان', gWorld:'العالم',
+        formula:'تُقدَّر الطاقة (جول) من <code>10^(1.5 × M + 4.8)</code> وتُعرض كمكافئ TNT (طن = 4.184×10⁹ جول). الأضرار الفعلية تعتمد على العمق والمسافة وطبيعة الأرض.',
+        share:'مشاركة', copied:'تم نسخ الرابط ✓', cta:'🌍 شاهد الزلازل على Globe',
+        tiny:'※ بالنسبة الحقيقية تصبح الدائرة الأصغر غير مرئية تقريباً.',
+        shareText:(a,b,r)=>`M${a} مقابل M${b}: فرق في الطاقة نحو ${r}× — مقارنة تفاعلية للقوة`,
+      },
+      ja: { dir:'ltr', locale:'ja-JP', name:'日本語',
+        mag:'マグニチュード', h1:'M5 と M7 は、どれだけ違うのか？',
+        lead:'マグニチュードは「対数」。数字が <b>1</b> 増えるとエネルギーは約 <b>32倍</b>、<b>2</b> 増えると約 <b>1000倍</b> になります。2つのM値を動かして、放出エネルギーを TNT 火薬の量で見比べてみてください。',
+        nameA:'基準 (A)', nameB:'この地震 (B)',
+        units:['kg','トン','キロトン','メガトン','ギガトン'],
+        tnt:(n,u)=>`TNT ${n} ${u}相当`,
+        who:'<b>{big}</b> は <b>{small}</b> の', ratioUnit:'倍', sub:'のエネルギーに相当します',
+        equalWho:'同じエネルギー', equalSub:'どちらも同じエネルギーです',
+        presetsTitle:'代表的な地震をあてはめる', toA:'基準 (A) に', toB:'この地震 (B) に',
+        gJp:'日本', gWorld:'世界',
+        formula:'エネルギー（ジュール）= <code>10^(1.5 × M + 4.8)</code> の理論式から算出し、TNT 換算（1トン = 4.184×10⁹ J）で表示しています。実際の被害は震源の深さ・距離・地盤で大きく変わります。',
+        share:'共有', copied:'リンクをコピーしました ✓', cta:'🌍 Globe で世界の地震を見る',
+        tiny:'※ 実際の比率では小さい方の円は点にもならないほど小さくなります',
+        shareText:(a,b,r)=>`M${a} と M${b} ではエネルギーが約${r}倍違う — マグニチュードのエネルギー比較`,
+      },
+    };
+    const ORDER = ['en','zh','hi','es','ar','ja'];
+    const SUPPORT = { en:'Buy me a coffee', zh:'请我喝杯咖啡', hi:'मुझे कॉफ़ी पिलाएँ', es:'Invítame un café', ar:'ادعمني بقهوة', ja:'コーヒーを一杯' };
+
+    let lang = localStorage.getItem('globe-lang') || 'ja';
+    if (!TR[lang]) lang = 'ja';
+    let T = TR[lang];
+
+    const $ = id => document.getElementById(id);
+    let A = 7.3, B = 9.0, target = 'b';
+    let labelA = 'hanshin', labelB = 'tohoku';
+
+    function nameOf(which) {
+      const id = which === 'a' ? labelA : labelB;
+      const M = which === 'a' ? A : B;
+      return id ? (NAMES[id][lang] || NAMES[id].en) : ('M' + M.toFixed(1));
+    }
+    function tntTons(M) { return Math.pow(10, 1.5 * M + 4.8) / 4.184e9; }
+    function fmtTNT(tons) {
+      let v, ui;
+      if (tons < 1)        { v = tons * 1000; ui = 0; }
+      else if (tons < 1e3) { v = tons;        ui = 1; }
+      else if (tons < 1e6) { v = tons / 1e3;  ui = 2; }
+      else if (tons < 1e9) { v = tons / 1e6;  ui = 3; }
+      else                 { v = tons / 1e9;  ui = 4; }
+      let num;
+      if (v >= 100) num = Math.round(v).toLocaleString(T.locale);
+      else if (v >= 10) num = v.toFixed(1);
+      else num = v.toFixed(2);
+      return { num, unit: T.units[ui] };
+    }
+    function fmtRatio(r) {
+      if (r < 1.05) return '1';
+      if (r >= 100) return Math.round(r).toLocaleString(T.locale);
+      if (r >= 10) return r.toFixed(0);
+      return r.toFixed(1);
+    }
+
+    function render() {
+      const Ea = tntTons(A), Eb = tntTons(B);
+      $('mval-a').textContent = 'M' + A.toFixed(1);
+      $('mval-b').textContent = 'M' + B.toFixed(1);
+      const ta = fmtTNT(Ea), tb = fmtTNT(Eb);
+      $('tntline-a').textContent = T.tnt(ta.num, ta.unit);
+      $('tntline-b').textContent = T.tnt(tb.num, tb.unit);
+      $('tnt-a').innerHTML = ta.num + ' <span>' + ta.unit + '</span>';
+      $('tnt-b').innerHTML = tb.num + ' <span>' + tb.unit + '</span>';
+      $('who-a').textContent = nameOf('a');
+      $('who-b').textContent = nameOf('b');
+
+      const biggerIsB = B >= A;
+      const bigName = biggerIsB ? nameOf('b') : nameOf('a');
+      const smallName = biggerIsB ? nameOf('a') : nameOf('b');
+      const ratio = Math.pow(10, 1.5 * Math.abs(B - A));
+      const equal = Math.abs(B - A) < 0.05;
+
+      if (equal) {
+        $('ratio-who').innerHTML = T.equalWho;
+        $('ratio').innerHTML = '×1';
+        $('ratio-sub').innerHTML = T.equalSub;
+      } else {
+        $('ratio-who').innerHTML = T.who.replace('{big}', bigName).replace('{small}', smallName);
+        $('ratio').innerHTML = '×' + fmtRatio(ratio) + '<small> ' + T.ratioUnit + '</small>';
+        $('ratio-sub').innerHTML = T.sub.replace('{big}', bigName).replace('{small}', smallName);
+      }
+
+      const Emax = Math.max(Ea, Eb), Emin = Math.min(Ea, Eb);
+      const Rmax = 150;
+      const rSmallReal = Rmax * Math.sqrt(Emin / Emax);
+      const rSmall = Math.max(3, rSmallReal);
+      const hexBigger = biggerIsB ? '#cf4f2e' : '#2c2a27';
+      const hexSmaller = biggerIsB ? '#2c2a27' : '#cf4f2e';
+      const big = $('circle-big'), small = $('circle-small');
+      big.setAttribute('r', Rmax);
+      big.setAttribute('fill', hexBigger); big.setAttribute('fill-opacity', '0.16');
+      big.setAttribute('stroke', hexBigger); big.setAttribute('stroke-width', '2.5');
+      small.setAttribute('r', rSmall);
+      small.setAttribute('fill', hexSmaller); small.setAttribute('fill-opacity', '0.92');
+      small.setAttribute('stroke', 'none');
+
+      const lblBig = $('lbl-big'), lblSmall = $('lbl-small');
+      lblBig.textContent = 'M' + Math.max(A, B).toFixed(1);
+      lblBig.setAttribute('x', 190); lblBig.setAttribute('y', 190 - Rmax + 26);
+      lblBig.setAttribute('fill', hexBigger);
+      if (rSmall > 26) {
+        lblSmall.textContent = 'M' + Math.min(A, B).toFixed(1);
+        lblSmall.setAttribute('x', 190); lblSmall.setAttribute('y', 196);
+        lblSmall.style.display = '';
+      } else lblSmall.style.display = 'none';
+      $('tiny-note').textContent = (rSmallReal < 3) ? T.tiny : '';
+    }
+
+    function applyStaticText() {
+      T = TR[lang];
+      document.documentElement.lang = lang;
+      document.documentElement.dir = T.dir;
+      $('eyebrow').textContent = 'Energy · ' + T.mag;
+      $('h1').textContent = T.h1;
+      $('lead').innerHTML = T.lead;
+      $('name-a').textContent = T.nameA;
+      $('name-b').textContent = T.nameB;
+      $('presets-title').textContent = T.presetsTitle;
+      $('seg-a').textContent = T.toA;
+      $('seg-b').textContent = T.toB;
+      $('formula').innerHTML = T.formula;
+      $('share-label').textContent = T.share;
+      $('cta-globe').textContent = T.cta;
+      $('coffee-label').textContent = SUPPORT[lang] || SUPPORT.en;
+      buildChips();
+      buildLangbar();
+      render();
+    }
+
+    function buildChips() {
+      const area = $('chip-area');
+      area.innerHTML = '';
+      [['jp', T.gJp], ['world', T.gWorld]].forEach(function (pair) {
+        const region = pair[0], label = pair[1];
+        const g = document.createElement('div'); g.className = 'pgroup';
+        const gl = document.createElement('div'); gl.className = 'glabel'; gl.textContent = label;
+        const chips = document.createElement('div'); chips.className = 'chips';
+        PRESETS.filter(p => p.region === region).forEach(p => {
+          const b = document.createElement('button'); b.className = 'chip';
+          b.innerHTML = '<span class="cn">' + (NAMES[p.id][lang] || NAMES[p.id].en) +
+            ' <span class="yr">· ' + p.y + '</span></span><span class="cm">M' + p.m.toFixed(1) + '</span>';
+          b.addEventListener('click', () => {
+            if (target === 'a') { A = p.m; labelA = p.id; $('slider-a').value = p.m; }
+            else { B = p.m; labelB = p.id; $('slider-b').value = p.m; }
+            render();
+          });
+          chips.appendChild(b);
+        });
+        g.appendChild(gl); g.appendChild(chips); area.appendChild(g);
+      });
+    }
+
+    function buildLangbar() {
+      const bar = $('langbar'); bar.innerHTML = '';
+      ORDER.forEach(code => {
+        const b = document.createElement('button');
+        b.textContent = TR[code].name;
+        if (code === lang) b.classList.add('on');
+        b.addEventListener('click', () => {
+          lang = code; localStorage.setItem('globe-lang', code); applyStaticText();
+        });
+        bar.appendChild(b);
+      });
+    }
+
+    $('slider-a').addEventListener('input', e => { A = +e.target.value; labelA = null; render(); });
+    $('slider-b').addEventListener('input', e => { B = +e.target.value; labelB = null; render(); });
+    document.querySelectorAll('#seg button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        target = btn.dataset.t;
+        document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b === btn));
+      });
+    });
+
+    $('share-btn').addEventListener('click', async () => {
+      const r = fmtRatio(Math.pow(10, 1.5 * Math.abs(B - A)));
+      const text = T.shareText(Math.min(A, B).toFixed(1), Math.max(A, B).toFixed(1), r);
+      const url = location.href;
+      if (navigator.share) { try { await navigator.share({ text, url }); return; } catch (e) {} }
+      try { await navigator.clipboard.writeText(text + ' ' + url); } catch (e) {}
+      const btn = $('share-btn');
+      btn.classList.add('done'); $('share-label').textContent = T.copied;
+      setTimeout(() => { btn.classList.remove('done'); $('share-label').textContent = T.share; }, 1800);
+    });
+
+    applyStaticText();
+  })();
+  </script>
+</body>
+</html>

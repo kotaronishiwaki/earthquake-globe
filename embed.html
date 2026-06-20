@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Globe — earthquake widget</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #f1eee8; --ink: #2c2a27; --muted: #8c887f;
+    --land: #2c2a27; --ocean: #f1eee8; --ring: #2c2a27;
+    --whirl: 44, 42, 39; --quake: 207, 79, 46; --tsunami: 38, 110, 150;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "Noto Sans", "Noto Sans JP", "Noto Sans SC", "Noto Sans Devanagari", "Noto Sans Arabic", system-ui, sans-serif;
+    overflow: hidden;
+  }
+  a.wrap {
+    display: flex; align-items: center; gap: 14px;
+    width: 100%; height: 100%; padding: 16px 20px 16px 8px;
+    text-decoration: none; color: inherit;
+    border: 1px solid rgba(44,42,39,0.14);
+    transition: background .25s;
+  }
+  a.wrap:hover { background: #ece8e0; }
+  .globe-wrap { flex: none; width: clamp(110px, 42%, 230px); aspect-ratio: 1; align-self: center; display: grid; place-items: center; }
+  canvas { width: 100%; height: 100%; display: block; }
+  .info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+  .kicker {
+    display: flex; align-items: center; gap: 6px; white-space: nowrap;
+    font-size: 11px; font-weight: 600; letter-spacing: .08em;
+    color: var(--muted); text-transform: uppercase; margin-bottom: 4px;
+  }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: rgb(var(--quake)); animation: blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .mag { font-size: clamp(30px, 9vw, 40px); font-weight: 700; line-height: 1; color: rgb(var(--quake)); letter-spacing: -.02em; }
+  .mag.tsu { color: rgb(var(--tsunami)); }
+  .place { font-size: 14px; font-weight: 600; line-height: 1.25; margin-top: 6px;
+    overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .foot {
+    display: flex; align-items: center; gap: 8px; margin-top: 10px;
+    font-size: 11.5px; font-weight: 600; color: var(--ink);
+  }
+  .foot .arrow { color: rgb(var(--quake)); transition: transform .2s; }
+  a.wrap:hover .foot .arrow { transform: translateX(3px); }
+  .count { color: var(--muted); font-weight: 500; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cta-group { flex: none; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  /* layout variants */
+  body[data-v="globe"] .info { display: none; }
+  body[data-v="globe"] .badge { display: flex; }
+  body[data-v="latest"] .count-row { display: none; }
+  .badge {
+    display: none; position: absolute; right: 12px; bottom: 10px;
+    align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--ink);
+  }
+  .badge .arrow { color: rgb(var(--quake)); }
+  @media (max-width: 380px) {
+    a.wrap { gap: 10px; padding: 12px 14px; }
+    .place { font-size: 13px; }
+    .kicker { font-size: 10px; }
+  }
+</style>
+</head>
+<body data-v="full">
+  <a class="wrap" id="wrap" href="https://globelabo.netlify.app/" target="_blank" rel="noopener">
+    <div class="globe-wrap"><canvas id="globe"></canvas></div>
+    <div class="info">
+      <div class="kicker"><span class="live-dot"></span><span id="k-text">LIVE · 過去7日間</span></div>
+      <div class="mag" id="mag">—</div>
+      <div class="place" id="place">最新の地震を読み込み中…</div>
+      <div class="meta" id="meta"></div>
+      <div class="foot count-row">
+        <span class="count" id="count"></span>
+        <span class="cta-group"><span id="cta">Globeで見る</span><span class="arrow">→</span></span>
+      </div>
+    </div>
+    <div class="badge"><span id="cta2">Globe</span><span class="arrow">→</span></div>
+  </a>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+  <script>
+  (function () {
+    const params = new URLSearchParams(location.search);
+    const variant = params.get('v') || 'full';        // full | latest | globe
+    document.body.setAttribute('data-v', variant);
+    const site = 'https://globelabo.netlify.app/';
+
+    const LANGS = {
+      ja: { dir:'ltr', kicker:'LIVE · 過去7日間', loading:'最新の地震を読み込み中…', cta:'Globeで見る',
+            count:n=>`${n}件の地震`, ago:m=>m<1?'たった今':m<60?`${m}分前`:`${Math.round(m/60)}時間前`, none:'最近の地震はありません' },
+      en: { dir:'ltr', kicker:'LIVE · PAST 7 DAYS', loading:'Loading latest quake…', cta:'View on Globe',
+            count:n=>`${n} earthquakes`, ago:m=>m<1?'just now':m<60?`${m} min ago`:`${Math.round(m/60)} h ago`, none:'No recent earthquakes' },
+      zh: { dir:'ltr', kicker:'LIVE · 过去7天', loading:'正在加载最新地震…', cta:'在 Globe 查看',
+            count:n=>`${n} 次地震`, ago:m=>m<1?'刚刚':m<60?`${m} 分钟前`:`${Math.round(m/60)} 小时前`, none:'暂无地震数据' },
+      hi: { dir:'ltr', kicker:'LIVE · पिछले 7 दिन', loading:'नवीनतम भूकंप लोड हो रहा है…', cta:'Globe पर देखें',
+            count:n=>`${n} भूकंप`, ago:m=>m<1?'अभी':m<60?`${m} मिनट पहले`:`${Math.round(m/60)} घंटे पहले`, none:'कोई हालिया भूकंप नहीं' },
+      es: { dir:'ltr', kicker:'EN VIVO · ÚLTIMOS 7 DÍAS', loading:'Cargando último sismo…', cta:'Ver en Globe',
+            count:n=>`${n} sismos`, ago:m=>m<1?'ahora mismo':m<60?`hace ${m} min`:`hace ${Math.round(m/60)} h`, none:'No hay sismos recientes' },
+      ar: { dir:'rtl', kicker:'مباشر · آخر 7 أيام', loading:'جارٍ تحميل آخر زلزال…', cta:'عرض على Globe',
+            count:n=>`${n} زلزال`, ago:m=>m<1?'الآن':m<60?`قبل ${m} د`:`قبل ${Math.round(m/60)} س`, none:'لا زلازل حديثة' },
+    };
+    const lang = LANGS[params.get('lang')] ? params.get('lang') : 'ja';
+    const L = LANGS[lang];
+    document.documentElement.lang = lang;
+    document.documentElement.dir = L.dir;
+    document.getElementById('k-text').textContent = L.kicker;
+    document.getElementById('place').textContent = L.loading;
+    document.getElementById('cta').textContent = L.cta;
+    document.getElementById('cta2').textContent = 'Globe';
+
+    // ---------- globe ----------
+    const SIZE = 240, C = SIZE / 2, R = 92;
+    const canvas = document.getElementById('globe');
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    canvas.width = SIZE * dpr; canvas.height = SIZE * dpr; ctx.scale(dpr, dpr);
+    canvas.style.maxWidth = SIZE + 'px'; canvas.style.maxHeight = SIZE + 'px';
+
+    const css = getComputedStyle(document.documentElement);
+    const col = n => css.getPropertyValue(n).trim();
+    const COL = { land: col('--land'), ocean: col('--ocean'), ring: col('--ring'),
+                  whirl: col('--whirl'), quake: col('--quake'), tsunami: col('--tsunami') };
+
+    const TILT = -18;
+    const projection = d3.geoOrthographic().scale(R).translate([C, C]).clipAngle(90).rotate([0, -TILT, 0]);
+    const path = d3.geoPath(projection, ctx);
+    const graticule = d3.geoGraticule10();
+
+    let land = null, borders = null, quakes = [], latest = null;
+    let rotX = 0;
+
+    const WHIRL = { A: R * 1.34, B: R * 0.5, tilt: -20 * Math.PI/180, dots: 48, gap: 0.05, headR: 2.4, tailR: 0.5, headO: 0.45 };
+    const ct = Math.cos(WHIRL.tilt), st = Math.sin(WHIRL.tilt);
+    function whirlPoint(a){ const ox=WHIRL.A*Math.cos(a), oy=WHIRL.B*Math.sin(a);
+      return { x:C+ox*ct-oy*st, y:C+ox*st+oy*ct, front:Math.sin(a)>=0 }; }
+    function drawWhirl(phase, wantFront){
+      for(let i=0;i<WHIRL.dots;i++){ const f=i/(WHIRL.dots-1); const p=whirlPoint(phase-i*WHIRL.gap);
+        if(p.front!==wantFront) continue; const r=WHIRL.headR+(WHIRL.tailR-WHIRL.headR)*f; const o=WHIRL.headO*(1-f)*(1-f);
+        if(o<=0.002) continue; ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2);
+        ctx.fillStyle='rgba('+COL.whirl+','+o.toFixed(3)+')'; ctx.fill(); }
+    }
+    const magDot = m => Math.max(1.4, Math.min(6, 1.4 + (m - 2.5) * 0.8));
+    function clipDisc(){ ctx.beginPath(); ctx.arc(C,C,R,0,Math.PI*2); ctx.clip(); }
+
+    function drawQuakes(tSec){
+      if(!quakes.length) return;
+      const rot = projection.rotate(), cen = [-rot[0], -rot[1]];
+      for(const q of quakes){
+        const dist = d3.geoDistance(q.coords, cen);
+        if(dist >= Math.PI/2) continue;
+        const p = projection(q.coords); if(!p) continue;
+        const edge = Math.min(1, (Math.PI/2 - dist)/0.32);
+        const dotR = magDot(q.mag);
+        const ph = ((tSec/2.6) + q.phase) % 1;
+        const ripR = dotR + ph*(dotR*2.4 + q.mag*2.0), ripO = (1-ph)*0.5*edge;
+        if(ripO > 0.01){ ctx.beginPath(); ctx.arc(p[0],p[1],ripR,0,Math.PI*2);
+          ctx.lineWidth=1.3; ctx.strokeStyle='rgba('+COL.quake+','+ripO.toFixed(3)+')'; ctx.stroke(); }
+        ctx.beginPath(); ctx.arc(p[0],p[1],dotR,0,Math.PI*2);
+        ctx.fillStyle='rgba('+COL.quake+','+(0.92*edge).toFixed(3)+')'; ctx.fill();
+        ctx.beginPath(); ctx.arc(p[0],p[1],dotR+1,0,Math.PI*2);
+        ctx.lineWidth=0.9; ctx.strokeStyle='rgba(241,238,232,'+(0.55*edge).toFixed(3)+')'; ctx.stroke();
+      }
+      // latest beacon
+      if(latest){
+        const dist = d3.geoDistance(latest.coords, cen);
+        if(dist < Math.PI/2){
+          const p = projection(latest.coords);
+          if(p){ const dotR = magDot(latest.mag); const accent = latest.tsunami ? COL.tsunami : COL.quake;
+            for(let j=0;j<2;j++){ const ph=((tSec/1.5)+j*0.5)%1;
+              ctx.beginPath(); ctx.arc(p[0],p[1],dotR+2+ph*14,0,Math.PI*2);
+              ctx.lineWidth=1.6; ctx.strokeStyle='rgba('+accent+','+((1-ph)*0.55).toFixed(3)+')'; ctx.stroke(); }
+            ctx.beginPath(); ctx.arc(p[0],p[1],dotR+2.4,0,Math.PI*2);
+            ctx.lineWidth=2; ctx.strokeStyle='rgba(241,238,232,0.95)'; ctx.stroke();
+            ctx.beginPath(); ctx.arc(p[0],p[1],dotR+1,0,Math.PI*2);
+            ctx.fillStyle='rgb('+accent+')'; ctx.fill();
+          }
+        }
+      }
+    }
+
+    let last = performance.now(), t0 = last;
+    function frame(now){
+      const dt = Math.min(48, now - last); last = now;
+      rotX += dt * 0.011;
+      const phase = (now - t0) * 0.0038;
+      projection.rotate([rotX, TILT, 0]);
+      ctx.clearRect(0,0,SIZE,SIZE);
+      drawWhirl(phase, false);
+      ctx.save(); clipDisc();
+      ctx.beginPath(); ctx.arc(C,C,R,0,Math.PI*2); ctx.fillStyle=COL.ocean; ctx.fill();
+      if(land){
+        ctx.beginPath(); path(land); ctx.fillStyle=COL.land; ctx.fill();
+        ctx.beginPath(); path(graticule); ctx.lineWidth=0.5; ctx.strokeStyle='rgba(241,238,232,0.16)'; ctx.stroke();
+        ctx.beginPath(); path(borders); ctx.lineWidth=0.6; ctx.strokeStyle=COL.ocean; ctx.stroke();
+      }
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(C,C,R,0,Math.PI*2); ctx.lineWidth=1.2; ctx.strokeStyle=COL.ring; ctx.stroke();
+      drawWhirl(phase, true);
+      ctx.save(); clipDisc(); drawQuakes((now - t0)/1000); ctx.restore();
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    // ---------- data ----------
+    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')
+      .then(r => r.json())
+      .then(world => {
+        land = topojson.merge(world, world.objects.countries.geometries);
+        borders = topojson.mesh(world, world.objects.countries, (a,b) => a !== b);
+      }).catch(()=>{});
+
+    fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson?_=' + Date.now(), { cache: 'no-store' })
+      .then(r => r.json())
+      .then(gj => {
+        const feats = gj.features || [];
+        quakes = feats.map((f,i) => ({
+          coords: [f.geometry.coordinates[0], f.geometry.coordinates[1]],
+          mag: f.properties.mag || 2.5,
+          time: f.properties.time,
+          tsunami: f.properties.tsunami === 1,
+          place: f.properties.place || '',
+          phase: (i * 0.61803398875) % 1,
+        }));
+        // latest earthquake overall (M2.5+ feed)
+        latest = quakes.reduce((m,q) => (!m || q.time > m.time) ? q : m, null);
+        renderInfo(quakes.length);
+      }).catch(()=>{});
+
+    function renderInfo(count){
+      document.getElementById('count').textContent = L.count(count);
+      if(!latest){ document.getElementById('place').textContent = L.none; document.getElementById('mag').textContent='—'; return; }
+      const mag = document.getElementById('mag');
+      mag.textContent = 'M' + latest.mag.toFixed(1);
+      mag.classList.toggle('tsu', !!latest.tsunami);
+      document.getElementById('place').textContent = latest.place || '—';
+      const mins = Math.round((Date.now() - latest.time)/60000);
+      document.getElementById('meta').textContent = L.ago(mins);
+    }
+  })();
+  </script>
+</body>
+</html>
