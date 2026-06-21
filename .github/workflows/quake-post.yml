@@ -35,6 +35,9 @@ jobs:
           # 共通設定
           SITE_URL:              ${{ vars.SITE_URL }}
           MIN_MAG:               ${{ vars.MIN_MAG }}
+          # 発生から何時間以内を投稿対象にするか（未設定なら既定6時間）。
+          # USGSの反映遅延に対応するための窓。
+          MAX_AGE_HOURS:         ${{ vars.MAX_AGE_HOURS }}
         run: node quake-post.js
         working-directory: scripts
 
