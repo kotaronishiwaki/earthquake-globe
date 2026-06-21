@@ -14,6 +14,16 @@
 // 投稿対象とする最小マグニチュード
 const MIN_MAG = parseFloat(process.env.MIN_MAG || '4.5');
 
+// 「Globe Hero」カードに切り替える閾値マグニチュード。
+// MIN_MAG 〜 (HERO_MAG 未満) … 従来どおりのシェア画像カードを投稿
+// HERO_MAG 以上            … Globe Hero カード（Claude 解説 + 地球儀）を投稿
+// 既定は M6.0。GitHub Variables の HERO_MAG で調整可能（例: 5.5 / 6.5）。
+const HERO_MAG = parseFloat(process.env.HERO_MAG || '6.0');
+
+// Globe Hero を試みるのは ANTHROPIC_API_KEY が設定されているときだけ。
+// 未設定なら全マグニチュードで従来のシェア画像にフォールバックする。
+const HERO_ENABLED = !!process.env.ANTHROPIC_API_KEY;
+
 // 発生から何時間以内の地震を投稿対象とするか。
 // USGSは地震を即時～1,2時間遅れて反映するため、「過去1時間」フィードでは
 // 反映が遅れた地震を取りこぼす。24時間フィード＋この窓で確実に拾いつつ、
@@ -24,6 +34,7 @@ const MAX_AGE_HOURS = parseFloat(process.env.MAX_AGE_HOURS || '6');
 const fs = require('fs');
 const path = require('path');
 const { renderShareCard } = require('./share-image');
+const { buildGlobeHero, buildHeroPost } = require('./globe-hero');
 const STATE_FILE = path.join(__dirname, 'posted.json');
 
 // 状態記録の保持期間。重複投稿を防ぐため、USGSフィードの窓（過去24時間）より
@@ -259,6 +270,82 @@ async function postToMastodon(text, lang) {
 }
 
 // ─────────────────────────────────────────────
+// Globe Hero 用の投稿（M6+ など大きな地震向け）
+// 縦長 1080×1350 のカードを「画像」として本文に直接添付する。
+// 従来の M4.5+ シェア画像（横長のリンクカード）とは添付方式が異なる。
+// ─────────────────────────────────────────────
+
+// Bluesky：Globe Hero 画像を images 埋め込みで投稿（リンクカードではなく画像）
+async function postHeroToBluesky(text, lang, png, q) {
+  const identifier = process.env.BLUESKY_HANDLE;
+  const password = process.env.BLUESKY_APP_PASSWORD;
+  if (!identifier || !password) return false;
+
+  const sessRes = await fetch('https://bsky.social/xrpc/com.atproto.server.createSession', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier, password }),
+  });
+  if (!sessRes.ok) throw new Error(`Bluesky login failed: ${sessRes.status} ${await sessRes.text()}`);
+  const { accessJwt, did } = await sessRes.json();
+
+  // Globe Hero PNG をアップロード
+  const upRes = await fetch('https://bsky.social/xrpc/com.atproto.repo.uploadBlob', {
+    method: 'POST',
+    headers: { 'Content-Type': 'image/png', Authorization: `Bearer ${accessJwt}` },
+    body: png,
+  });
+  if (!upRes.ok) throw new Error(`Bluesky upload failed: ${upRes.status} ${await upRes.text()}`);
+  const blob = (await upRes.json()).blob;
+
+  // 画像はリンクカードを担わないため、本文の 🔗 URL 行は残す（facets でクリック可能）
+  const record = {
+    $type: 'app.bsky.feed.post',
+    text,
+    facets: buildFacets(text),
+    langs: [lang],
+    createdAt: new Date().toISOString(),
+    embed: {
+      $type: 'app.bsky.embed.images',
+      images: [{ image: blob, alt: `Globe earthquake mechanism card — M${q.mag.toFixed(1)} ${q.place}` }],
+    },
+  };
+  const postRes = await fetch('https://bsky.social/xrpc/com.atproto.repo.createRecord', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessJwt}` },
+    body: JSON.stringify({ repo: did, collection: 'app.bsky.feed.post', record }),
+  });
+  if (!postRes.ok) throw new Error(`Bluesky post failed: ${postRes.status} ${await postRes.text()}`);
+  return true;
+}
+
+// Mastodon：Globe Hero 画像をメディア添付して投稿
+async function postHeroToMastodon(text, lang, png, q) {
+  const base = process.env.MASTODON_BASE_URL;
+  const token = process.env.MASTODON_ACCESS_TOKEN;
+  if (!base || !token) return false;
+  const root = base.replace(/\/$/, '');
+  const auth = { Authorization: `Bearer ${token}` };
+
+  // 1) メディアをアップロード
+  const media = new FormData();
+  media.append('file', new Blob([png], { type: 'image/png' }), 'globe-hero.png');
+  media.append('description', `Globe earthquake mechanism card — M${q.mag.toFixed(1)} ${q.place}`);
+  const mRes = await fetch(`${root}/api/v2/media`, { method: 'POST', headers: auth, body: media });
+  if (!mRes.ok) throw new Error(`Mastodon media failed: ${mRes.status} ${await mRes.text()}`);
+  const mediaId = (await mRes.json()).id;
+
+  // 2) 画像付きで投稿
+  const res = await fetch(`${root}/api/v1/statuses`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: text, language: lang, visibility: 'public', media_ids: [mediaId] }),
+  });
+  if (!res.ok) throw new Error(`Mastodon post failed: ${res.status} ${await res.text()}`);
+  return true;
+}
+
+// ─────────────────────────────────────────────
 // メイン処理
 // ─────────────────────────────────────────────
 
@@ -328,27 +415,63 @@ async function main() {
     // 深リンク：この地震の詳細に直接飛べる URL
     const deepUrl = `${SITE_URL.replace(/\/$/, '')}/#eq=${encodeURIComponent(q.id)}`;
     const text = tmpl(q, deepUrl);
-    // Bluesky はカードがリンクを担うので、本文からは URL 行を省く
-    const textNoUrl = text.split('\n').filter(l => !l.startsWith('🔗')).join('\n');
 
-    // シェア画像（地球儀 + 震源）を生成。Bluesky のカードのサムネに使う。
-    const img = await renderShareCard(q);
-    if (img) console.log(`  (share image: ${(img.length / 1024).toFixed(0)} KB)`);
-
-    console.log(`\n--- Posting in [${lang}] for ${q.id} ---`);
-    console.log(text);
+    // ティア判定：HERO_MAG 以上は Globe Hero、未満は従来のシェア画像。
+    const wantHero = HERO_ENABLED && q.mag >= HERO_MAG;
+    let hero = null;
+    if (wantHero) {
+      console.log(`\n--- M${q.mag.toFixed(1)} ≥ M${HERO_MAG}: building Globe Hero card for ${q.id} ---`);
+      try {
+        hero = await buildGlobeHero(q);
+        console.log(`  (globe hero: ${(hero.png.length / 1024).toFixed(0)} KB · region ${hero.content.regionLang || 'en-only'})`);
+      } catch (err) {
+        console.error('  ⚠ Globe Hero failed, falling back to share image:', err.message);
+        hero = null;
+      }
+    }
 
     // それぞれ独立して投稿（片方が失敗しても、もう片方は続行）
     let ok = false;
-    try {
-      if (await postToBluesky(textNoUrl, lang, img, q, deepUrl)) { console.log('✅ Bluesky: posted'); ok = true; }
-    } catch (err) {
-      console.error('❌ Bluesky failed:', err.message);
-    }
-    try {
-      if (await postToMastodon(text, lang)) { console.log('✅ Mastodon: posted'); ok = true; }
-    } catch (err) {
-      console.error('❌ Mastodon failed:', err.message);
+    if (hero) {
+      // ── Globe Hero ティア：縦長カードを画像として添付 ──
+      // 本文は Mechanism Cards の「Auto-post text」（AI解説ベース）に差し替え。
+      // プラットフォームごとに文字数上限へ自動フィット（Bluesky 300 / Mastodon 500）。
+      const heroTextBsky = buildHeroPost(q, hero.content, deepUrl, 300);
+      const heroTextMasto = buildHeroPost(q, hero.content, deepUrl, 500);
+      console.log(`--- Posting [Globe Hero] in [${hero.content.regionLang || 'en'}] for ${q.id} ---`);
+      console.log(heroTextMasto);
+      try {
+        if (await postHeroToBluesky(heroTextBsky, hero.content.regionLang || 'en', hero.png, q)) { console.log('✅ Bluesky: posted (hero)'); ok = true; }
+      } catch (err) {
+        console.error('❌ Bluesky failed:', err.message);
+      }
+      try {
+        if (await postHeroToMastodon(heroTextMasto, hero.content.regionLang || 'en', hero.png, q)) { console.log('✅ Mastodon: posted (hero)'); ok = true; }
+      } catch (err) {
+        console.error('❌ Mastodon failed:', err.message);
+      }
+    } else {
+      // ── 従来ティア：シェア画像 + リンクカード（今までどおり） ──
+      // Bluesky はカードがリンクを担うので、本文からは URL 行を省く
+      const textNoUrl = text.split('\n').filter(l => !l.startsWith('🔗')).join('\n');
+
+      // シェア画像（地球儀 + 震源）を生成。Bluesky のカードのサムネに使う。
+      const img = await renderShareCard(q);
+      if (img) console.log(`  (share image: ${(img.length / 1024).toFixed(0)} KB)`);
+
+      console.log(`\n--- Posting in [${lang}] for ${q.id} ---`);
+      console.log(text);
+
+      try {
+        if (await postToBluesky(textNoUrl, lang, img, q, deepUrl)) { console.log('✅ Bluesky: posted'); ok = true; }
+      } catch (err) {
+        console.error('❌ Bluesky failed:', err.message);
+      }
+      try {
+        if (await postToMastodon(text, lang)) { console.log('✅ Mastodon: posted'); ok = true; }
+      } catch (err) {
+        console.error('❌ Mastodon failed:', err.message);
+      }
     }
 
     // 少なくとも片方に投稿できたら「投稿済み」として記録
