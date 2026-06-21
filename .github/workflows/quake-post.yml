@@ -24,6 +24,12 @@ jobs:
         run: npm install --no-audit --no-fund
         working-directory: scripts
 
+      # Globe Hero カードの描画に使う Chromium（M6+ のときだけ起動）。
+      # ANTHROPIC_API_KEY 未設定なら Globe Hero は使われず、この chromium も不要。
+      - name: Install Chromium (for Globe Hero)
+        run: npx playwright install --with-deps chromium
+        working-directory: scripts
+
       - name: Run quake-post
         env:
           # Bluesky（使う場合のみ設定。未設定ならスキップされます）
@@ -32,9 +38,15 @@ jobs:
           # Mastodon（使う場合のみ設定。未設定ならスキップされます）
           MASTODON_BASE_URL:     ${{ secrets.MASTODON_BASE_URL }}
           MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
+          # Globe Hero 用（未設定なら全マグニチュードで従来のシェア画像にフォールバック）
+          ANTHROPIC_API_KEY:     ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL:       ${{ vars.ANTHROPIC_MODEL }}
           # 共通設定
           SITE_URL:              ${{ vars.SITE_URL }}
           MIN_MAG:               ${{ vars.MIN_MAG }}
+          # Globe Hero に切り替える閾値マグニチュード（未設定なら既定 M6.0）。
+          # これ未満は従来のシェア画像、以上は Globe Hero カード。
+          HERO_MAG:              ${{ vars.HERO_MAG }}
           # 発生から何時間以内を投稿対象にするか（未設定なら既定6時間）。
           # USGSの反映遅延に対応するための窓。
           MAX_AGE_HOURS:         ${{ vars.MAX_AGE_HOURS }}
