@@ -249,7 +249,7 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
   const CACHE_VER = 'v2';        // bump to invalidate old cached shapes
 
   function getPass() { try { return localStorage.getItem(PASS_KEY) || ''; } catch (e) { return ''; } }
-  function setPass(t) { try { t ? localStorage.setItem(PASS_KEY, t) : localStorage.removeItem(PASS_KEY); } catch (e) {} }
+  function setPass(t) { try { t ? localStorage.setItem(PASS_KEY, t) : localStorage.removeItem(PASS_KEY); } catch (e) {} notifyState(); }
   function hasPass() { return !!getPass(); }
 
   function usageToday() {
@@ -262,8 +262,24 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
   function bumpUsage() {
     const u = usageToday(); u.n += 1;
     try { localStorage.setItem(USE_KEY, JSON.stringify(u)); } catch (e) {}
+    notifyState();
+  }
+  // Server (Upstash) is the source of truth for the free limit. When it says
+  // we're out (HTTP 402), record that locally so the button shows the lock —
+  // even on devices/PWAs where the local counter never persisted.
+  function markExhausted() {
+    const u = usageToday(); u.n = Math.max(u.n, CFG.FREE_PER_DAY);
+    try { localStorage.setItem(USE_KEY, JSON.stringify(u)); } catch (e) {}
+    notifyState();
   }
   function canGenerate() { return hasPass() || freeLeft() > 0; }
+
+  // Lets the host (index.html) re-sync the explain button's lock icon
+  // whenever entitlement changes, not just on its own optimistic guess.
+  const stateListeners = [];
+  function notifyState() {
+    for (const fn of stateListeners) { try { fn(!canGenerate()); } catch (e) {} }
+  }
 
   function cacheGet(id, lang) {
     try { const c = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); return c[CACHE_VER + ':' + id + ':' + lang] || null; } catch (e) { return null; }
@@ -467,7 +483,7 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
       if (!hasPass()) bumpUsage();
       renderContent(q, c, lang);
     } catch (e) {
-      if (e && e.paywall) { renderPaywall(lang); return; }
+      if (e && e.paywall) { markExhausted(); renderPaywall(lang); return; }
       renderError(L.errGen, lang);
     }
   }
@@ -485,6 +501,8 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
     buttonLabel(lang) { return (LOC[lang] || LOC.en).btn; },
     isLocked() { return !canGenerate(); },
     hasPass: hasPass,
+    // host can subscribe to lock-state changes (e.g. after a server 402)
+    onStateChange(fn) { if (typeof fn === 'function') stateListeners.push(fn); },
   };
   window.GlobeExplain = Api;
 

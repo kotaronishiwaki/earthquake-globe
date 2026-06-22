@@ -996,6 +996,14 @@
       }, lang);
       $('explain-q').classList.toggle('locked', window.GlobeExplain.isLocked());
     });
+    // Server (Upstash) is the source of truth for the free limit. Re-sync the
+    // lock icon whenever entitlement changes (e.g. a 402 after the local
+    // counter failed to persist, as inside an installed PWA).
+    if (window.GlobeExplain && window.GlobeExplain.onStateChange) {
+      window.GlobeExplain.onStateChange(locked => {
+        $('explain-q').classList.toggle('locked', locked);
+      });
+    }
     $('latest').addEventListener('click', () => { if (latestIdx >= 0) flyTo(quakes[latestIdx].coords, latestIdx); });
 
     // ---------- share ----------
