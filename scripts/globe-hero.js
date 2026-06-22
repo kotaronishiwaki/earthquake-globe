@@ -103,7 +103,11 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
 async function renderCard(q, content) {
   // 遅延 require：M6+ が来たときだけ chromium を要求する（軽い地震では未使用）
   const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  // file:// で開くため、Babel standalone が text/babel の .jsx を XHR 取得できるよう
+  // ローカルファイル間アクセスを許可する（未指定だと __studioReady が立たずタイムアウト）。
+  const browser = await chromium.launch({
+    args: ['--allow-file-access-from-files', '--disable-web-security'],
+  });
   try {
     const page = await browser.newPage({ viewport: { width: 1200, height: 1500 }, deviceScaleFactor: 2 });
     await page.goto(HTML + '?export=globe-hero', { waitUntil: 'networkidle' });
