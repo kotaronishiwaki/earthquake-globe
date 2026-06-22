@@ -884,6 +884,7 @@
       if (q.mmi != null) { mmiRow.style.display = 'flex'; $('c-mmi').textContent = q.mmi.toFixed(1); }
       else mmiRow.style.display = 'none';
       $('c-tsunami').style.display = q.tsunami ? 'flex' : 'none';
+      if (window.GlobeExplain) $('explain-q').classList.toggle('locked', window.GlobeExplain.isLocked());
     }
     function positionCard() {
       const q = quakes[selected];

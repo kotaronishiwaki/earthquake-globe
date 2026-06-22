@@ -252,24 +252,35 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
   function setPass(t) { try { t ? localStorage.setItem(PASS_KEY, t) : localStorage.removeItem(PASS_KEY); } catch (e) {} notifyState(); }
   function hasPass() { return !!getPass(); }
 
+  // In-memory mirror of today's usage. localStorage can silently fail or get
+  // wiped on mobile (private mode, ITP, PWA partitioning), which made the lock
+  // flicker back off. The session counter guarantees the limit/lock holds once
+  // we've generated enough times OR the server (402) tells us we're out.
+  let memUsage = { date: null, n: 0 };
   function usageToday() {
     const today = new Date().toISOString().slice(0, 10);
-    let u = { date: today, n: 0 };
-    try { const s = JSON.parse(localStorage.getItem(USE_KEY) || '{}'); if (s.date === today) u = s; } catch (e) {}
-    return u;
+    let n = 0;
+    try { const s = JSON.parse(localStorage.getItem(USE_KEY) || '{}'); if (s.date === today) n = s.n || 0; } catch (e) {}
+    if (memUsage.date !== today) memUsage = { date: today, n: 0 };
+    n = Math.max(n, memUsage.n);
+    return { date: today, n: n };
+  }
+  function persistUsage(u) {
+    memUsage = { date: u.date, n: u.n };
+    try { localStorage.setItem(USE_KEY, JSON.stringify(u)); } catch (e) {}
   }
   function freeLeft() { return Math.max(0, CFG.FREE_PER_DAY - usageToday().n); }
   function bumpUsage() {
     const u = usageToday(); u.n += 1;
-    try { localStorage.setItem(USE_KEY, JSON.stringify(u)); } catch (e) {}
+    persistUsage(u);
     notifyState();
   }
   // Server (Upstash) is the source of truth for the free limit. When it says
-  // we're out (HTTP 402), record that locally so the button shows the lock —
-  // even on devices/PWAs where the local counter never persisted.
+  // we're out (HTTP 402), record that — in memory and (best-effort) storage —
+  // so the button shows the lock even where the local counter never persisted.
   function markExhausted() {
     const u = usageToday(); u.n = Math.max(u.n, CFG.FREE_PER_DAY);
-    try { localStorage.setItem(USE_KEY, JSON.stringify(u)); } catch (e) {}
+    persistUsage(u);
     notifyState();
   }
   function canGenerate() { return hasPass() || freeLeft() > 0; }
