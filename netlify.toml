@@ -2,8 +2,17 @@
   functions = "netlify/functions"
   publish = "."
 
-[build.environment]
-  NODE_VERSION = "18"
-
 [functions]
-  node_bundler = "zisi"
+  node_bundler = "esbuild"
+
+# Always revalidate the HTML so a new deploy's updated asset versions
+# (quake-explain.js?v=…) are picked up immediately, even on mobile.
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
