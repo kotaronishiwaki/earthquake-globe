@@ -72,7 +72,7 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-latest',
+      model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     }),
