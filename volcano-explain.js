@@ -146,7 +146,29 @@
     ar: { ashfall: 'تساقط الرماد', pyroclastic: 'تدفق بركاني', lava: 'تدفق الحمم', lahar: 'تدفق طيني', ballistics: 'قذائف صخرية', gas: 'غاز بركاني' },
   };
 
-  // ───────────────────────── helpers ─────────────────────────
+  // JMA warning-type ("kind") strings come from the feed in Japanese only.
+  // Translate the known categories so the value matches the card's language.
+  const KIND_LAB = {
+    warning:     { en: 'Eruption Warning', ja: '噴火警報', zh: '喷发警报', hi: 'विस्फोट चेतावनी', es: 'Aviso de erupción', ar: 'تحذير ثوران' },
+    crater:      { en: 'Crater-area Warning', ja: '火口周辺警報', zh: '火口周边警报', hi: 'क्रेटर-क्षेत्र चेतावनी', es: 'Aviso de zona del cráter', ar: 'تحذير منطقة الفوهة' },
+    residential: { en: 'Eruption Warning (residential)', ja: '噴火警報（居住地域）', zh: '喷发警报（居民区）', hi: 'विस्फोट चेतावनी (आवासीय)', es: 'Aviso de erupción (zonas habitadas)', ar: 'تحذير ثوران (مناطق سكنية)' },
+    ashfall:     { en: 'Ashfall Forecast', ja: '降灰予報', zh: '降灰预报', hi: 'राख-गिरने का पूर्वानुमान', es: 'Pronóstico de caída de ceniza', ar: 'توقعات تساقط الرماد' },
+    forecast:    { en: 'Eruption Forecast', ja: '噴火予報', zh: '喷发预报', hi: 'विस्फोट पूर्वानुमान', es: 'Pronóstico de erupción', ar: 'توقعات الثوران' },
+    notice:      { en: 'Eruption Notice', ja: '噴火速報', zh: '喷发快报', hi: 'विस्फोट सूचना', es: 'Aviso urgente de erupción', ar: 'إشعار ثوران عاجل' },
+  };
+  function kindOf(kind, lang) {
+    if (!kind) return '';
+    let key = null;
+    if (kind.indexOf('降灰') >= 0) key = 'ashfall';
+    else if (kind.indexOf('居住地域') >= 0) key = 'residential';
+    else if (kind.indexOf('火口周辺') >= 0) key = 'crater';
+    else if (kind.indexOf('噴火速報') >= 0 || kind.indexOf('速報') >= 0) key = 'notice';
+    else if (kind.indexOf('噴火警報') >= 0 || kind.indexOf('警報') >= 0) key = 'warning';
+    else if (kind.indexOf('噴火予報') >= 0 || kind.indexOf('予報') >= 0) key = 'forecast';
+    if (!key) return kind;
+    return (KIND_LAB[key][lang] || KIND_LAB[key].en);
+  }
+
   const LOCALE = { ja: 'ja-JP', zh: 'zh-CN', hi: 'hi-IN', es: 'es-ES', ar: 'ar', en: 'en-US' };
   function coordOf(lat, lon) {
     return Math.abs(lat).toFixed(1) + '°' + (lat >= 0 ? 'N' : 'S') + '  ' + Math.abs(lon).toFixed(1) + '°' + (lon >= 0 ? 'E' : 'W');
@@ -385,7 +407,7 @@ Do not restate the volcano name or raw alert number in the text fields.`;
 
     // meta grid
     const meta = [];
-    if (jma) { if (v.kind) meta.push([L.kind, v.kind]); }
+    if (jma) { if (v.kind) meta.push([L.kind, kindOf(v.kind, lang)]); }
     else if (usgs) { if (v.alert) meta.push([L.avAlert, tc(v.alert)]); if (v.obs) meta.push([L.obs, v.obs]); }
     meta.push([L.updated, whenOf(v.date, lang)]);
     meta.push([L.loc, coordOf(v.lat, v.lon)]);
