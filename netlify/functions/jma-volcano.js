@@ -16,7 +16,11 @@
  * Source: https://www.data.jma.go.jp/developer/xml/  (public, no key required)
  */
 
+// 高頻度 feed = last few hours of reports (newly issued/changed warnings + ashfall forecasts)
 const FEED = 'https://www.data.jma.go.jp/developer/xml/feed/eqvol.xml';
+// 長期 feed = retains the latest report per phenomenon for ~1 week (so a warning that
+// hasn't changed recently still has an entry here)
+const FEED_L = 'https://www.data.jma.go.jp/developer/xml/feed/eqvol_l.xml';
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
   'access-control-allow-origin': '*',
@@ -63,6 +67,32 @@ const LEVEL_RGB = { 1: '70,150,70', 2: '214,170,28', 3: '214,108,28', 4: '200,52
 
 function pick(re, s) { const m = re.exec(s); return m ? m[1].trim() : ''; }
 
+// full-width digits → ASCII
+function toHalf(s) { return (s || '').replace(/[０-９]/g, d => '０１２３４５６７８９'.indexOf(d) + ''); }
+
+// pull the numeric 噴火警戒レベル out of a free-text summary, e.g.
+//   「現在、桜島は噴火警戒レベル３（入山規制）です」 → 3
+function levelFromText(t) {
+  const m = /噴火警戒レベル[^0-9０-９]{0,6}([0-9０-９])/.exec(t || '');
+  return m ? parseInt(toHalf(m[1]), 10) : null;
+}
+
+// resolve any display name (incl. parenthetical sub-volcano like 霧島山（新燃岳）)
+// to a base key present in COORDS, longest match first so 草津白根山（…）→草津白根山.
+const BASE_NAMES = Object.keys(COORDS).sort((a, b) => b.length - a.length);
+function resolveBase(s) {
+  if (!s) return null;
+  const n = s.replace(/\s+/g, '');
+  for (const k of BASE_NAMES) { if (n.indexOf(k) !== -1) return k; }
+  return null;
+}
+
+// ashfall-forecast summaries read「現在、〇〇は噴火警戒レベルN（…）です」
+function nameFromAshfall(content) {
+  const m = /現在、(.+?)は噴火警戒レベル/.exec(content || '');
+  return m ? m[1] : '';
+}
+
 function parseReport(xml, fallbackName) {
   // volcano name: <VolcanoName> (jmx_eb) or <Area><Name>
   let name = pick(/<(?:[\w-]+:)?VolcanoName[^>]*>([^<]+)<\/(?:[\w-]+:)?VolcanoName>/, xml)
@@ -87,50 +117,69 @@ exports.handler = async (event) => {
     return { statusCode: 204, headers: { ...JSON_HEADERS, 'access-control-allow-methods': 'GET,OPTIONS' } };
   }
   try {
-    const feedRes = await fetch(FEED, { headers: { 'user-agent': 'globe-quake-map/1.0' } });
-    if (!feedRes.ok) return { statusCode: 502, headers: JSON_HEADERS, body: '{"error":"feed ' + feedRes.status + '"}' };
-    const feed = await feedRes.text();
+    // Pull BOTH the high-frequency and long-period feeds. The high-frequency feed
+    // only holds the last few hours, so in quiet periods it has no 噴火警報・予報
+    // entry at all — the long-period feed retains the latest one per volcano, and
+    // the 降灰予報（定時）ashfall forecasts state each active volcano's current level.
+    const feeds = await Promise.all([FEED, FEED_L].map(async u => {
+      try {
+        const r = await fetch(u, { headers: { 'user-agent': 'globe-quake-map/1.0' } });
+        return r.ok ? await r.text() : '';
+      } catch (_) { return ''; }
+    }));
+    if (!feeds.some(Boolean)) return { statusCode: 502, headers: JSON_HEADERS, body: '{"error":"feed unreachable"}' };
 
-    // collect 噴火警報・予報 entries (these carry the current alert level), newest first
-    const entries = feed.split('<entry>').slice(1);
-    const wanted = [];
-    for (const e of entries) {
-      const title = pick(/<title>([^<]+)<\/title>/, e);
-      if (title !== '噴火警報・予報') continue;
-      const url = pick(/<id>([^<]+)<\/id>/, e);
-      const updated = pick(/<updated>([^<]+)<\/updated>/, e);
-      if (url) wanted.push({ url, updated });
-      if (wanted.length >= 30) break;
+    const records = [];        // { base, level, kind, date, url }
+    const needReport = [];     // 噴火警報 entries whose level we couldn't read from the summary
+
+    for (const feed of feeds) {
+      for (const e of feed.split('<entry>').slice(1)) {
+        const title = pick(/<title>([^<]+)<\/title>/, e);
+        const url = pick(/<id>([^<]+)<\/id>/, e);
+        const updated = pick(/<updated>([^<]+)<\/updated>/, e);
+        const content = pick(/<content[^>]*>([\s\S]*?)<\/content>/, e);
+
+        if (title === '噴火警報・予報' || title === '噴火速報') {
+          const base = resolveBase(content);
+          if (!base) continue;
+          const lvl = levelFromText(content);
+          if (lvl != null) records.push({ base, level: lvl, kind: '噴火警報', date: updated, url });
+          else if (url) needReport.push({ base, url, updated });   // fall back to the report XML
+        } else if (title === '降灰予報（定時）' || title === '降灰予報（速報）') {
+          const base = resolveBase(nameFromAshfall(content)) || resolveBase(content);
+          const lvl = levelFromText(content);
+          if (base && lvl != null) records.push({ base, level: lvl, kind: '降灰予報', date: updated, url });
+        }
+      }
     }
 
-    // fetch each report XML (bounded) and parse
-    const reports = await Promise.all(wanted.map(async w => {
+    // Resolve the handful of warnings whose level wasn't in the summary text.
+    const fetched = await Promise.all(needReport.slice(0, 20).map(async w => {
       try {
         const r = await fetch(w.url, { headers: { 'user-agent': 'globe-quake-map/1.0' } });
         if (!r.ok) return null;
-        const xml = await r.text();
-        const p = parseReport(xml);
-        return { ...p, date: w.updated, url: w.url };
+        const p = parseReport(await r.text());
+        const base = resolveBase(p.name) || w.base;
+        return (base && p.level) ? { base, level: p.level, kind: p.kind || '噴火警報', date: w.updated, url: w.url } : null;
       } catch (_) { return null; }
     }));
+    for (const r of fetched) if (r) records.push(r);
 
-    // keep the newest report per volcano (feed is newest-first → first wins)
-    const byName = {};
-    for (const r of reports) {
-      if (!r || !r.name) continue;
-      if (!byName[r.name]) byName[r.name] = r;
-    }
+    // Keep the newest record per volcano so a recent downgrade overrides an old warning.
+    records.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+    const byBase = {};
+    for (const r of records) if (!byBase[r.base]) byBase[r.base] = r;
 
     const out = [];
-    for (const name of Object.keys(byName)) {
-      const r = byName[name];
+    for (const base of Object.keys(byBase)) {
+      const r = byBase[base];
       const level = r.level || 1;
-      if (level < 2) continue;                    // level 1 (平常) → not an active warning
-      const c = COORDS[name];                      // coordinate lookup (report coords vary)
+      if (level < 2) continue;                     // level 1 (平常) → not an active warning
+      const c = COORDS[base];
       if (!c) continue;                            // unknown location → skip rather than mis-plot
       out.push({
-        name,
-        nameEn: NAME_EN[name] || name,
+        name: base,
+        nameEn: NAME_EN[base] || base,
         level,
         kind: r.kind || '',
         rgb: LEVEL_RGB[level] || LEVEL_RGB[2],
@@ -139,6 +188,7 @@ exports.handler = async (event) => {
         url: r.url || 'https://www.jma.go.jp/bosai/volcano/',
       });
     }
+    out.sort((a, b) => b.level - a.level);
 
     return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(out) };
   } catch (e) {
