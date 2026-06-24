@@ -455,8 +455,15 @@
       ar: { share:"مشاركة", copy:"نسخ الرابط", postX:"النشر على X", copied:"تم نسخ الرابط", smsg:"زلزال بقوة M%m · %p — خريطة الزلازل لآخر 7 أيام" },
       ja: { share:"共有", copy:"リンクをコピー", postX:"Xに投稿", copied:"リンクをコピーしました", smsg:"M%m の地震 · %p ｜過去7日間の地震マップ" },
     };
-    let lang = (new URLSearchParams(location.search)).get('lang') || localStorage.getItem("globe-lang") || "ja";
-    if (!TR[lang]) lang = "ja";
+    function detectLang() {
+      try {
+        const list = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language];
+        for (const l of list) { const code = (l || '').toLowerCase().split('-')[0]; if (TR[code]) return code; }
+      } catch (e) {}
+      return "en";   // first visit, unsupported browser language → English
+    }
+    let lang = (new URLSearchParams(location.search)).get('lang') || localStorage.getItem("globe-lang") || detectLang();
+    if (!TR[lang]) lang = detectLang();
     let T = TR[lang];
     let S = SHARE[lang];
     const SUPPORT = { en:"Buy me a coffee", zh:"请我喝杯咖啡", hi:"मुझे कॉफ़ी पिलाएँ", es:"Invítame un café", ar:"ادعمني بقهوة", ja:"コーヒーを一杯" };
