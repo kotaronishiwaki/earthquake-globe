@@ -5,7 +5,18 @@ name: Globe volcano auto-poster
 on:
   schedule:
     - cron: '7,37 * * * *'   # twice an hour, offset from the quake job
-  workflow_dispatch: {}        # manual "Run workflow" button
+  workflow_dispatch:           # manual "Run workflow" button
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: true
+        default: 'once'
+        type: choice
+        options:
+          - once     # normal: post only new/changed alerts (default)
+          - test     # post the single highest current alert NOW (verify posting works)
+          - dry      # render cards to out/, post nothing
+          - seed     # record current state without posting
 
 permissions:
   contents: write              # to commit posted-volcanoes.json
@@ -28,7 +39,7 @@ jobs:
       - name: Install Chromium
         working-directory: auto-poster
         run: npx playwright install --with-deps chromium
-      - name: Run once
+      - name: Run
         working-directory: auto-poster
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -41,7 +52,9 @@ jobs:
           POST_MASTODON: '1'
           MIN_JMA_LEVEL: '2'
           POST_AVIATION: 'YELLOW,ORANGE,RED'
-        run: node volcano-poster.mjs --once
+          MAX_AGE_HOURS: '72'
+        # schedule runs default to --once; the manual button uses the chosen mode
+        run: node volcano-poster.mjs --${{ github.event.inputs.mode || 'once' }}
       - name: Persist posted-volcanoes.json
         run: |
           git config user.name "globe-bot"
