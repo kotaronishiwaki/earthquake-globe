@@ -37,6 +37,7 @@ const MIN_JMA_LEVEL = Number(ENV.MIN_JMA_LEVEL || 2);          // JMA: post leve
 const POST_AVIATION = (ENV.POST_AVIATION || 'YELLOW,ORANGE,RED').toUpperCase().split(',').map(s => s.trim());
 const MAX_AGE_HOURS = Number(ENV.MAX_AGE_HOURS || 72);         // don't post a change whose report is older than this
 const SEED = ARGS.has('--seed');                              // record current state without posting
+const TEST = ARGS.has('--test') || ARGS.has('--force');      // post the single highest current alert NOW (end-to-end check)
 // where to read JMA from — the deployed Netlify proxy already parses JMA's XML robustly
 const JMA_URL = ENV.JMA_VOLCANO_URL || 'https://globelabo.netlify.app/.netlify/functions/jma-volcano';
 const HANS = 'https://volcanoes.usgs.gov/hans-public/api/volcano/';
@@ -246,6 +247,30 @@ async function pass(browser) {
   const firstRun = !existsSync(STATE);
   const state = await loadState();         // { id: { sig, level, color, date } }
   const alerts = await fetchAlerts();
+
+  // --test / --force: post the single highest current alert right now, ignoring
+  // the ledger and freshness — a one-shot end-to-end check that posting works.
+  if (TEST) {
+    if (!alerts.length) { log('No elevated volcanoes right now — nothing to test-post.'); return; }
+    const v = alerts.slice().sort((a, b) => b.sev - a.sev)[0];
+    log(`TEST mode — posting highest current alert: ${v.nameEn || v.name} [${v.id}] ${signature(v)}`);
+    let agent = null;
+    if (!DRY && ENV.POST_BLUESKY === '1') agent = await bskyLogin();
+    const content = await generateContent(v);
+    log(`  edifice: ${content.edificeLabel.en} · hazards ${content.hazards.join(', ') || '—'}`);
+    const png = await renderCard(browser, v, content);
+    if (DRY) {
+      await mkdir(OUT, { recursive: true });
+      await writeFile(join(OUT, `${v.id}.png`), png);
+      await writeFile(join(OUT, `${v.id}.txt`), buildPost(v, content, 300, 'updated').text);
+      log(`  ✓ dry run → out/${v.id}.png (+ .txt)`);
+    } else {
+      if (agent) await postBluesky(agent, buildPost(v, content, 300, 'updated').text, png, v);
+      if (ENV.POST_MASTODON === '1') await postMastodon(buildPost(v, content, 500, 'updated').text, png, v);
+    }
+    log('  ✓ TEST post complete — check your Bluesky / Mastodon timeline. (Ledger left unchanged.)');
+    return;
+  }
 
   if ((firstRun || SEED) && !DRY) {
     const seeded = {};
