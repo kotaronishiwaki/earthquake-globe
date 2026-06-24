@@ -22,6 +22,7 @@ import { BskyAgent, RichText } from '@atproto/api';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const HTML = pathToFileURL(join(__dirname, '..', 'Volcano Activity Cards.html')).href;
@@ -34,6 +35,8 @@ const DRY = ARGS.has('--dry');
 const ONCE = ARGS.has('--once') || DRY;
 const MIN_JMA_LEVEL = Number(ENV.MIN_JMA_LEVEL || 2);          // JMA: post level >= this (2 = warning)
 const POST_AVIATION = (ENV.POST_AVIATION || 'YELLOW,ORANGE,RED').toUpperCase().split(',').map(s => s.trim());
+const MAX_AGE_HOURS = Number(ENV.MAX_AGE_HOURS || 72);         // don't post a change whose report is older than this
+const SEED = ARGS.has('--seed');                              // record current state without posting
 // where to read JMA from — the deployed Netlify proxy already parses JMA's XML robustly
 const JMA_URL = ENV.JMA_VOLCANO_URL || 'https://globelabo.netlify.app/.netlify/functions/jma-volcano';
 const HANS = 'https://volcanoes.usgs.gov/hans-public/api/volcano/';
@@ -196,9 +199,15 @@ async function renderCard(browser, v, content) {
 }
 
 // ── Bluesky ──────────────────────────────────────────────────────────────
-async function postBluesky(text, png, v) {
+// Log in ONCE per run and reuse the session — creating a fresh session for
+// every volcano trips Bluesky's createSession rate limit (surfaces as an
+// "Invalid identifier or password" error after the first few).
+async function bskyLogin() {
   const agent = new BskyAgent({ service: 'https://bsky.social' });
   await agent.login({ identifier: ENV.BLUESKY_IDENTIFIER, password: ENV.BLUESKY_APP_PASSWORD });
+  return agent;
+}
+async function postBluesky(agent, text, png, v) {
   const up = await agent.uploadBlob(png, { encoding: 'image/png' });
   const rt = new RichText({ text });
   await rt.detectFacets(agent);
@@ -231,16 +240,53 @@ async function postMastodon(text, png, v) {
 
 // ── one pass ──────────────────────────────────────────────────────────────
 async function pass(browser) {
+  // FIRST RUN: if there's no ledger yet, record the current alert state without
+  // posting — otherwise every volcano already at an elevated level would be
+  // posted at once. (Pass --seed to force this; delete the ledger to re-seed.)
+  const firstRun = !existsSync(STATE);
   const state = await loadState();         // { id: { sig, level, color, date } }
   const alerts = await fetchAlerts();
-  // a volcano is postable if it's new OR its alert signature changed since last post
+
+  if ((firstRun || SEED) && !DRY) {
+    const seeded = {};
+    for (const v of alerts) seeded[v.id] = { sig: signature(v), level: v.level || null, color: v.color || null, date: v.date || null, ts: Date.now() };
+    await saveState(seeded);
+    log(`Seeded ledger with ${alerts.length} active volcano(es) — nothing posted on first run. Future level changes will post.`);
+    return;
+  }
+
+  const tooOld = v => {
+    if (!v.date) return false;               // no timestamp → don't block
+    const ms = Date.parse(v.date);
+    return Number.isFinite(ms) && (Date.now() - ms) > MAX_AGE_HOURS * 3600e3;
+  };
+  // postable = new OR changed signature, and recent enough to be worth posting
   const todo = alerts.filter(v => {
     const prev = state[v.id];
-    return !prev || prev.sig !== signature(v);
+    if (prev && prev.sig === signature(v)) return false;   // unchanged
+    if (tooOld(v)) return false;                            // stale report
+    return true;
   }).sort((a, b) => b.sev - a.sev);
 
-  if (!todo.length) { log(`No new/changed volcano alerts (${alerts.length} active).`); return; }
+  // record (silently) any stale changes so we don't keep re-evaluating them
+  let touched = false;
+  for (const v of alerts) {
+    const prev = state[v.id];
+    if ((!prev || prev.sig !== signature(v)) && tooOld(v)) {
+      state[v.id] = { sig: signature(v), level: v.level || null, color: v.color || null, date: v.date || null, ts: Date.now() };
+      touched = true;
+    }
+  }
+  if (touched && !DRY) await saveState(state);
+
+  if (!todo.length) { log(`No new/changed volcano alerts to post (${alerts.length} active).`); return; }
   log(`${todo.length} new/changed volcano alert(s) of ${alerts.length} active.`);
+
+  // log in to Bluesky once for the whole pass
+  let agent = null;
+  if (!DRY && ENV.POST_BLUESKY === '1') {
+    try { agent = await bskyLogin(); } catch (e) { log(`  ✗ Bluesky login failed: ${e.message} — skipping Bluesky this pass`); }
+  }
 
   for (const v of todo) {
     // detect direction of change for nicer wording
@@ -263,7 +309,7 @@ async function pass(browser) {
         await writeFile(join(OUT, `${v.id}.txt`), buildPost(v, content, 300, change).text);
         log(`  ✓ dry run → out/${v.id}.png (+ .txt)`);
       } else {
-        if (ENV.POST_BLUESKY === '1') await postBluesky(buildPost(v, content, 300, change).text, png, v);
+        if (agent) await postBluesky(agent, buildPost(v, content, 300, change).text, png, v);
         if (ENV.POST_MASTODON === '1') await postMastodon(buildPost(v, content, 500, change).text, png, v);
       }
       state[v.id] = { sig: signature(v), level: v.level || null, color: v.color || null, date: v.date || null, ts: Date.now() };
