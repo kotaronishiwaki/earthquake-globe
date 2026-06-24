@@ -1,0 +1,19 @@
+{
+  "name": "globe-quake-autoposter",
+  "version": "1.0.0",
+  "description": "Polls USGS for M6+ earthquakes, generates a bilingual mechanism explainer with Claude, renders the Globe Hero card, and auto-posts it to Bluesky and Mastodon.",
+  "type": "module",
+  "bin": { "globe-autopost": "poster.mjs" },
+  "scripts": {
+    "start": "node poster.mjs",
+    "once": "node poster.mjs --once",
+    "dry": "node poster.mjs --dry",
+    "volcano": "node volcano-poster.mjs",
+    "volcano:once": "node volcano-poster.mjs --once",
+    "volcano:dry": "node volcano-poster.mjs --dry"
+  },
+  "dependencies": {
+    "@atproto/api": "^0.13.18",
+    "playwright": "^1.48.0"
+  }
+}
