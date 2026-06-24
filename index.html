@@ -45,6 +45,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="quake-explain.css?v=20260623" />
+<link rel="stylesheet" href="volcano-explain.css?v=20260624" />
 <style>
   :root {
     --bg: #f1eee8;
@@ -55,6 +56,7 @@
     --whirl: 44, 42, 39;
     --quake: 207, 79, 46;
     --tsunami: 38, 110, 150;
+    --volcano: 176, 116, 28;
     --ink: #2c2a27;
     --muted: #8c887f;
   }
@@ -165,6 +167,20 @@
   .card .rows div { display: flex; justify-content: space-between; gap: 10px; font-size: 11.5px; }
   .card .rows .k { color: var(--muted); }
   .card .rows .vv { font-weight: 600; font-variant-numeric: tabular-nums; text-align: end; }
+
+  /* ---- volcano overlay + card ---- */
+  .ptoggle .switch-row + .switch-row { margin-top: 10px; }
+  #volcano-toggle[aria-pressed="true"] .switch { background: rgb(var(--volcano)); }
+  .sw-tri { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid rgb(var(--volcano)); flex: none; }
+  .sw-dot { width: 10px; height: 10px; border-radius: 50%; background: rgb(var(--quake)); flex: none; }
+  .vcard .vtag { display: flex; align-items: center; gap: 7px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: rgb(var(--volcano)); margin-bottom: 8px; }
+  .vcard .vtag .vtri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 9px solid rgb(var(--volcano)); }
+  .vcard .vname { font-size: 14px; font-weight: 600; line-height: 1.3; margin-bottom: 11px; padding-right: 14px; text-wrap: pretty; }
+  .vcard .valert { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .vcard .vdot { width: 12px; height: 12px; border-radius: 50%; flex: none; box-shadow: 0 0 0 3px rgba(0,0,0,.05); }
+  .vcard .vlevel { font-size: 13px; font-weight: 600; letter-spacing: .02em; }
+  .vcard a.vlink { text-decoration: none; }
+  [dir="rtl"] .vcard .vname { padding-right: 0; padding-left: 14px; }
 
   /* ---- timeline ---- */
   .timeline { margin-top: 22px; width: var(--globe); display: flex; align-items: center; gap: 11px; user-select: none; }
@@ -290,10 +306,20 @@
         </div>
         <div class="ptoggle">
           <div class="k" id="l-plates-k">オーバーレイ</div>
+          <button class="switch-row" id="quake-toggle" aria-pressed="true">
+            <span class="switch"></span>
+            <span class="sw-dot"></span>
+            <span id="l-quakes">地震活動</span>
+          </button>
           <button class="switch-row" id="plate-toggle" aria-pressed="false">
             <span class="switch"></span>
             <span class="sw-line"></span>
             <span id="l-plates">プレート境界</span>
+          </button>
+          <button class="switch-row" id="volcano-toggle" aria-pressed="false">
+            <span class="switch"></span>
+            <span class="sw-tri"></span>
+            <span id="l-volcanoes">火山活動</span>
           </button>
         </div>
       </div>
@@ -318,6 +344,20 @@
           <div class="cardfoot">
             <button class="ex-trigger" id="explain-q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.2 1 2V17h6v-1.5c0-.8.4-1.4 1-2A6 6 0 0 0 12 3Z"></path><line x1="9.5" y1="21" x2="14.5" y2="21"></line></svg><span class="lk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V8a5 5 0 0 1 10 0"></path><rect x="4" y="11" width="16" height="9" rx="2"></rect></svg></span><span id="l-explain">解説</span></button>
             <button class="share-c" id="share-q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"></line></svg><span id="l-share">共有</span></button>
+          </div>
+        </div>
+        <div class="card vcard" id="vcard">
+          <button class="close" id="vcard-close" aria-label="閉じる">×</button>
+          <div class="vtag"><span class="vtri"></span><span id="l-vtag">火山</span></div>
+          <div class="vname" id="v-name">—</div>
+          <div class="valert" id="v-alert"><span class="vdot" id="v-dot"></span><span class="vlevel" id="v-level">—</span></div>
+          <div class="rows">
+            <div id="row-color"><span class="k" id="l-vcolor">航空カラーコード</span><span class="vv" id="v-color">—</span></div>
+            <div id="row-obs"><span class="k" id="l-vobs">観測所</span><span class="vv" id="v-obs">—</span></div>
+            <div><span class="k" id="l-vlast">最終通知</span><span class="vv" id="v-last">—</span></div>
+          </div>
+          <div class="cardfoot">
+            <button class="ex-trigger" id="explain-v"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.2 1 2V17h6v-1.5c0-.8.4-1.4 1-2A6 6 0 0 0 12 3Z"></path><line x1="9.5" y1="21" x2="14.5" y2="21"></line></svg><span class="lk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V8a5 5 0 0 1 10 0"></path><rect x="4" y="11" width="16" height="9" rx="2"></rect></svg></span><span id="l-explain-v">解説</span></button>
           </div>
         </div>
       </div>
@@ -352,6 +392,7 @@
   <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
   <script src="quake-explain.js?v=20260623"></script>
+  <script src="volcano-explain.js?v=20260624"></script>
   <script>
   (function () {
     // ---------- i18n ----------
@@ -363,7 +404,7 @@
         latest:"Latest", filter:"Show magnitude", live:"Live", play:"Play", pause:"Pause",
         min:"%n min ago", hour:"%n hr ago", day:"%n days ago", fresh1:"%n new earthquake", freshN:"%n new earthquakes",
         trend:"vs. same 7 days", tWeek:"Last week", tMonth:"A month ago", tYear:"A year ago",
-        overlay:"Overlay", plates:"Plate boundaries", rotPause:"Pause rotation", rotPlay:"Resume rotation" },
+        overlay:"Overlay", plates:"Plate boundaries", rotPause:"Pause rotation", rotPlay:"Resume rotation", volcanoes:"Active volcanoes", quakesL:"Seismic activity", vTag:"Volcano", vColor:"Aviation color", vObs:"Observatory", vLast:"Last notice", vReport:"Volcano notice", vLastE:"Last reported", vReportE:"Smithsonian report", vLvl:"Level", vKind:"Warning", vReportJ:"JMA bulletin" },
       zh: { name:"中文", dir:"ltr", locale:"zh-CN",
         title:"过去 7 天的地震", count:"地震次数", max:"最大震级",
         hint:"点按震源 · 拖动旋转", mag:"震级", depth:"深度", when:"发生",
@@ -371,7 +412,7 @@
         latest:"最新", filter:"显示震级", live:"实时", play:"播放", pause:"暂停",
         min:"%n 分钟前", hour:"%n 小时前", day:"%n 天前", fresh1:"新增 %n 次地震", freshN:"新增 %n 次地震",
         trend:"与同期 7 天相比", tWeek:"上周", tMonth:"一个月前", tYear:"一年前",
-        overlay:"图层", plates:"板块边界", rotPause:"暂停旋转", rotPlay:"继续旋转" },
+        overlay:"图层", plates:"板块边界", rotPause:"暂停旋转", rotPlay:"继续旋转", volcanoes:"活火山", quakesL:"地震活动", vTag:"火山", vColor:"航空颜色代码", vObs:"观测站", vLast:"最近通知", vReport:"火山通报", vLastE:"最后报告", vReportE:"史密森报告", vLvl:"等级", vKind:"警报种类", vReportJ:"气象厅信息" },
       hi: { name:"हिन्दी", dir:"ltr", locale:"hi-IN",
         title:"पिछले 7 दिनों के भूकंप", count:"कुल भूकंप", max:"अधिकतम तीव्रता",
         hint:"केंद्र पर टैप करें · घुमाने के लिए खींचें", mag:"तीव्रता", depth:"गहराई", when:"कब",
@@ -379,7 +420,7 @@
         latest:"नवीनतम", filter:"तीव्रता दिखाएँ", live:"लाइव", play:"चलाएँ", pause:"रोकें",
         min:"%n मिनट पहले", hour:"%n घंटे पहले", day:"%n दिन पहले", fresh1:"%n नया भूकंप", freshN:"%n नए भूकंप",
         trend:"समान 7 दिन से", tWeek:"पिछला सप्ताह", tMonth:"एक माह पहले", tYear:"एक वर्ष पहले",
-        overlay:"ओवरले", plates:"प्लेट सीमाएँ", rotPause:"घूर्णन रोकें", rotPlay:"घूर्णन जारी रखें" },
+        overlay:"ओवरले", plates:"प्लेट सीमाएँ", rotPause:"घूर्णन रोकें", rotPlay:"घूर्णन जारी रखें", volcanoes:"सक्रिय ज्वालामुखी", quakesL:"भूकंप गतिविधि", vTag:"ज्वालामुखी", vColor:"विमानन रंग कोड", vObs:"वेधशाला", vLast:"अंतिम सूचना", vReport:"ज्वालामुखी सूचना", vLastE:"अंतिम रिपोर्ट", vReportE:"स्मिथसोनियन रिपोर्ट", vLvl:"स्तर", vKind:"चेतावनी", vReportJ:"JMA सूचना" },
       es: { name:"Español", dir:"ltr", locale:"es-ES",
         title:"Sismos · últimos 7 días", count:"Eventos totales", max:"Magnitud máxima",
         hint:"Toca un punto · arrastra para girar", mag:"Magnitud", depth:"Profundidad", when:"Cuándo",
@@ -387,7 +428,7 @@
         latest:"Más reciente", filter:"Mostrar magnitud", live:"En vivo", play:"Reproducir", pause:"Pausar",
         min:"hace %n min", hour:"hace %n h", day:"hace %n días", fresh1:"%n sismo nuevo", freshN:"%n sismos nuevos",
         trend:"vs. mismos 7 días", tWeek:"Semana pasada", tMonth:"Hace un mes", tYear:"Hace un año",
-        overlay:"Capa", plates:"Límites de placas", rotPause:"Pausar rotación", rotPlay:"Reanudar rotación" },
+        overlay:"Capa", plates:"Límites de placas", rotPause:"Pausar rotación", rotPlay:"Reanudar rotación", volcanoes:"Volcanes activos", quakesL:"Actividad sísmica", vTag:"Volcán", vColor:"Color de aviación", vObs:"Observatorio", vLast:"Último aviso", vReport:"Aviso volcánico", vLastE:"Último informe", vReportE:"Informe Smithsonian", vLvl:"Nivel", vKind:"Aviso", vReportJ:"Boletín JMA" },
       ar: { name:"العربية", dir:"rtl", locale:"ar",
         title:"الزلازل · آخر 7 أيام", count:"إجمالي الزلازل", max:"أكبر قوة",
         hint:"انقر على نقطة · اسحب للتدوير", mag:"القوة", depth:"العمق", when:"متى",
@@ -395,7 +436,7 @@
         latest:"الأحدث", filter:"إظهار القوة", live:"مباشر", play:"تشغيل", pause:"إيقاف",
         min:"منذ %n دقيقة", hour:"منذ %n ساعة", day:"منذ %n يوم", fresh1:"%n زلزال جديد", freshN:"%n زلازل جديدة",
         trend:"مقارنة بـ 7 أيام", tWeek:"الأسبوع الماضي", tMonth:"قبل شهر", tYear:"قبل سنة",
-        overlay:"الطبقة", plates:"حدود الصفائح", rotPause:"إيقاف الدوران", rotPlay:"استئناف الدوران" },
+        overlay:"الطبقة", plates:"حدود الصفائح", rotPause:"إيقاف الدوران", rotPlay:"استئناف الدوران", volcanoes:"البراكين النشطة", quakesL:"النشاط الزلزالي", vTag:"بركان", vColor:"رمز اللون", vObs:"المرصد", vLast:"آخر إشعار", vReport:"إشعار بركاني", vLastE:"آخر تقرير", vReportE:"تقرير سميثسونيان", vLvl:"المستوى", vKind:"تحذير", vReportJ:"نشرة JMA" },
       ja: { name:"日本語", dir:"ltr", locale:"ja-JP",
         title:"過去7日間の地震", count:"件数", max:"最大マグニチュード",
         hint:"震源をタップ · ドラッグで回転", mag:"マグニチュード", depth:"深さ", when:"発生",
@@ -403,7 +444,7 @@
         latest:"最新", filter:"表示マグニチュード", live:"ライブ", play:"再生", pause:"一時停止",
         min:"%n分前", hour:"%n時間前", day:"%n日前", fresh1:"新しい地震が %n 件", freshN:"新しい地震が %n 件",
         trend:"同じ 7 日間との比較", tWeek:"先週", tMonth:"1か月前", tYear:"1年前",
-        overlay:"オーバーレイ", plates:"プレート境界", rotPause:"回転を一時停止", rotPlay:"回転を再開" },
+        overlay:"オーバーレイ", plates:"プレート境界", rotPause:"回転を一時停止", rotPlay:"回転を再開", volcanoes:"火山活動", quakesL:"地震活動", vTag:"火山", vColor:"航空カラーコード", vObs:"観測所", vLast:"最終通知", vReport:"火山速報", vLastE:"最終報告", vReportE:"スミソニアンの報告", vLvl:"レベル", vKind:"警報種別", vReportJ:"気象庁の情報" },
     };
     const ORDER = ["en", "zh", "hi", "es", "ar", "ja"];
     const SHARE = {
@@ -440,7 +481,7 @@
 
     const style = getComputedStyle(document.documentElement);
     const col = n => style.getPropertyValue(n).trim();
-    const COL = { land: col('--land'), hair: col('--hair'), ring: col('--ring'), ocean: col('--ocean'), whirl: col('--whirl'), quake: col('--quake'), tsunami: col('--tsunami') };
+    const COL = { land: col('--land'), hair: col('--hair'), ring: col('--ring'), ocean: col('--ocean'), whirl: col('--whirl'), quake: col('--quake'), tsunami: col('--tsunami'), volcano: col('--volcano') };
 
     const TILT = -18;
     const projection = d3.geoOrthographic().scale(R).translate([C, C]).clipAngle(90).rotate([0, -TILT, 0]);
@@ -452,7 +493,12 @@
     let selected = -1, paused = false;
     let stat = null, latestIdx = -1;
     let platesOn = false;
+    let qOn = true;
+    try { const s = localStorage.getItem('globe-quakes'); if (s !== null) qOn = s === '1'; } catch (e) {}
     try { platesOn = localStorage.getItem('globe-plates') === '1'; } catch (e) {}
+    let vOn = false;
+    try { vOn = localStorage.getItem('globe-volcanoes') === '1'; } catch (e) {}
+    let volcanoes = [], selV = -1;
     let userPaused = false;
     try { userPaused = localStorage.getItem('globe-spin') === '0'; } catch (e) {}
 
@@ -587,6 +633,37 @@
       }
     }
 
+    function drawVolcanoes(tSec) {
+      if (!volcanoes.length) return;
+      const rot = projection.rotate(), cen = [-rot[0], -rot[1]];
+      for (let i = 0; i < volcanoes.length; i++) {
+        const v = volcanoes[i];
+        const vrgb = v.rgb || COL.volcano;
+        const dist = d3.geoDistance(v.coords, cen);
+        if (dist >= Math.PI / 2) { v._sx = null; continue; }
+        const p = projection(v.coords); if (!p) { v._sx = null; continue; }
+        v._sx = p[0]; v._sy = p[1];
+        const edge = Math.min(1, (Math.PI / 2 - dist) / 0.32);
+        const ph = ((tSec / 3.0) + v.phase) % 1;
+        const halo = 4 + ph * 9;
+        ctx.beginPath(); ctx.arc(p[0], p[1], halo, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(' + vrgb + ',' + ((1 - ph) * 0.18 * edge).toFixed(3) + ')'; ctx.fill();
+        const w = 5.4, h = 9.2, cy = p[1] - 0.5;
+        const apex = cy - h * 0.6, baseY = cy + h * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(p[0], apex);
+        ctx.lineTo(p[0] - w, baseY);
+        ctx.lineTo(p[0] + w, baseY);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(' + vrgb + ',' + (0.95 * edge).toFixed(3) + ')'; ctx.fill();
+        ctx.lineWidth = 1.1; ctx.strokeStyle = 'rgba(241,238,232,' + (0.7 * edge).toFixed(3) + ')'; ctx.stroke();
+        if (i === selV) {
+          ctx.beginPath(); ctx.arc(p[0], cy, h + 3 + 2 * (0.5 + 0.5 * Math.sin(tSec * 3.2)), 0, Math.PI * 2);
+          ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(' + vrgb + ',0.9)'; ctx.stroke();
+        }
+      }
+    }
+
     function draw(rx, ry, phase, tSec) {
       projection.rotate([rx, ry, 0]).scale(R * zoom);
       ctx.clearRect(0, 0, SIZE, SIZE);
@@ -613,7 +690,8 @@
       drawWhirl(phase, true);
 
       ctx.save(); clipDisc();
-      drawQuakes(tSec);
+      if (vOn) drawVolcanoes(tSec);
+      if (qOn) drawQuakes(tSec);
       ctx.restore();
     }
 
@@ -742,8 +820,65 @@
 
     loadQuakes(false);
     loadTrends();
+    loadVolcanoes();
     setInterval(() => loadQuakes(true), 300000);  // auto-refresh every 5 minutes
     setInterval(loadTrends, 6 * 3600e3);          // refresh baselines every 6h (long sessions)
+    setInterval(loadVolcanoes, 300000);           // refresh volcano activity every 5 minutes
+
+    // ---- volcanic activity (three layers) ----
+    // USGS Volcano Hazards Program (HANS): US volcanoes at an elevated alert level / aviation
+    //   color code — getElevatedVolcanoes (status + notice), getUSVolcanoes (coords, by vnum).
+    // JMA (気象庁): Japan's real-time 噴火警戒レベル ≥ 2, via our Netlify proxy (server-side, JMA
+    //   has no CORS). Takes precedence over EONET inside Japan.
+    // NASA EONET (Smithsonian GVP): global open volcanic events — fills in everywhere else.
+    //   EONET points near a USGS- or JMA-listed volcano are dropped as duplicates.
+    function loadVolcanoes() {
+      const HANS = 'https://volcanoes.usgs.gov/hans-public/api/volcano/';
+      const CODE_RGB = { GREEN: '70,150,70', YELLOW: '214,170,28', ORANGE: '214,108,28', RED: '200,52,40' };
+      Promise.all([
+        fetch(HANS + 'getElevatedVolcanoes').then(r => r.json()).catch(() => []),
+        fetch(HANS + 'getUSVolcanoes').then(r => r.json()).catch(() => []),
+        fetch('https://eonet.gsfc.nasa.gov/api/v3/categories/12?status=open').then(r => r.json()).catch(() => ({})),
+        fetch('/.netlify/functions/jma-volcano').then(r => r.json()).catch(() => []),
+      ]).then(([elev, us, eo, jma]) => {
+        const coordOf = {};
+        (Array.isArray(us) ? us : []).forEach(v => {
+          const lat = parseFloat(v.latitude), lon = parseFloat(v.longitude);
+          if (Number.isFinite(lat) && Number.isFinite(lon)) coordOf[String(v.vnum)] = [lon, lat];
+        });
+        const list = [];
+        (Array.isArray(elev) ? elev : []).forEach(e => {
+          const c = coordOf[String(e.vnum)];
+          if (!c) return;
+          const code = (e.color_code || '').toUpperCase();
+          list.push({
+            source: 'usgs', coords: c, title: e.volcano_name || '', obs: e.obs_fullname || '',
+            color: code, alert: (e.alert_level || '').toUpperCase(),
+            date: e.sent_utc ? e.sent_utc.replace(' ', 'T') + 'Z' : null,
+            report: e.notice_url || '', rgb: CODE_RGB[code] || COL.volcano,
+          });
+        });
+        (Array.isArray(jma) ? jma : []).forEach(v => {
+          if (!Number.isFinite(v.lon) || !Number.isFinite(v.lat)) return;
+          list.push({
+            source: 'jma', coords: [v.lon, v.lat], title: v.name || '', titleEn: v.nameEn || v.name || '',
+            level: v.level, kind: v.kind || '', date: v.date || null,
+            report: v.url || 'https://www.jma.go.jp/bosai/volcano/', rgb: v.rgb || COL.volcano,
+          });
+        });
+        const evs = (eo && eo.events) || [];
+        evs.forEach(e => {
+          const geo = e.geometry && e.geometry.length ? e.geometry[e.geometry.length - 1] : null;
+          if (!geo || !geo.coordinates) return;
+          const c = [geo.coordinates[0], geo.coordinates[1]];
+          if (list.some(u => u.source !== 'eonet' && d3.geoDistance(u.coords, c) < 0.004)) return; // ~25 km
+          const si = (e.sources || []).find(s => s.id === 'SIVolcano');
+          list.push({ source: 'eonet', coords: c, title: e.title || '', date: geo.date, report: si ? si.url : e.link, rgb: COL.volcano });
+        });
+        volcanoes = list.map((v, idx) => { v.phase = (idx * 0.61803398875) % 1; return v; });
+        if (selV >= 0) { renderVCard(); positionVCard(); }
+      }).catch(() => {});
+    }
 
     // ---------- text ----------
     const $ = id => document.getElementById(id);
@@ -826,6 +961,10 @@
       try { return new Date(ms).toLocaleString(T.locale, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
       catch (e) { return new Date(ms).toLocaleString(); }
     }
+    function fmtDate(d) {
+      try { return new Date(d).toLocaleDateString(T.locale, { year: 'numeric', month: 'short', day: 'numeric' }); }
+      catch (e) { return String(d); }
+    }
     let lastTLabel = '';
     function updateTLabel() {
       const txt = isLive() ? T.live : fmtTime(cutoff());
@@ -847,6 +986,15 @@
       $('l-filter').textContent = T.filter;
       $('l-plates-k').textContent = T.overlay;
       $('l-plates').textContent = T.plates;
+      $('l-volcanoes').textContent = T.volcanoes;
+      $('l-quakes').textContent = T.quakesL;
+      $('l-vtag').textContent = T.vTag;
+      $('l-vcolor').textContent = T.vColor;
+      $('l-vobs').textContent = T.vObs;
+      $('l-vlast').textContent = T.vLast;
+      if (window.VolcanoExplain) $('l-explain-v').textContent = window.VolcanoExplain.buttonLabel(lang);
+      if (selV >= 0) renderVCard();
+      $('vcard-close').setAttribute('aria-label', T.close);
       syncSpin();
       $('l-mag').textContent = T.mag;
       $('l-depth').textContent = T.depth;
@@ -901,7 +1049,56 @@
     function showCard(i) { selected = i; renderCard(); positionCard(); card.classList.add('show'); }
     function hideCard() { card.classList.remove('show'); }
 
+    const vcard = $('vcard');
+    function renderVCard() {
+      if (selV < 0 || !volcanoes[selV]) return;
+      const v = volcanoes[selV];
+      const usgs = v.source === 'usgs', jma = v.source === 'jma';
+      const tc = s => s ? s.charAt(0) + s.slice(1).toLowerCase() : '—';
+      const isJa = (T.locale || '').slice(0, 2) === 'ja';
+      $('v-name').textContent = (jma ? (isJa ? v.title : v.titleEn) : v.title) || '—';
+      $('v-alert').style.display = (usgs || jma) ? '' : 'none';
+      $('row-color').style.display = (usgs || (jma && v.kind)) ? '' : 'none';
+      $('row-obs').style.display = usgs ? '' : 'none';
+      if (usgs) {
+        $('v-dot').style.background = 'rgb(' + (v.rgb || COL.volcano) + ')';
+        $('v-level').textContent = tc(v.alert);
+        const vc = $('v-color');
+        vc.textContent = tc(v.color);
+        vc.style.color = 'rgb(' + (v.rgb || COL.volcano) + ')';
+        $('v-obs').textContent = v.obs || '—';
+      } else if (jma) {
+        $('v-dot').style.background = 'rgb(' + (v.rgb || COL.volcano) + ')';
+        $('v-level').textContent = T.vLvl + ' ' + (v.level || '—');
+        $('l-vcolor').textContent = T.vKind;
+        const vc = $('v-color');
+        vc.textContent = v.kind || '—';
+        vc.style.color = 'rgb(' + (v.rgb || COL.volcano) + ')';
+      }
+      $('l-vlast').textContent = jma ? T.vLast : (usgs ? T.vLast : T.vLastE);
+      $('v-last').textContent = v.date ? fmtDate(v.date) : '—';
+      if (window.VolcanoExplain) {
+        $('l-explain-v').textContent = window.VolcanoExplain.buttonLabel(lang);
+        $('explain-v').classList.toggle('locked', window.VolcanoExplain.isLocked());
+      }
+    }
+    function positionVCard() {
+      const v = volcanoes[selV]; if (!v) return;
+      const dispW = canvas.clientWidth || SIZE, dispH = canvas.clientHeight || SIZE;
+      const s = dispW / SIZE;
+      const cw = vcard.offsetWidth || 200, chh = vcard.offsetHeight || 120;
+      const px = (v._sx != null ? v._sx : C) * s, py = (v._sy != null ? v._sy : C) * s;
+      let left = px + 16, top = py - 20;
+      if (left + cw > dispW) left = px - cw - 16;
+      left = Math.max(0, Math.min(left, dispW - cw));
+      top = Math.max(0, Math.min(top, dispH - chh));
+      vcard.style.left = left + 'px'; vcard.style.top = top + 'px';
+    }
+    function showVCard(i) { selV = i; renderVCard(); positionVCard(); vcard.classList.add('show'); }
+    function hideVCard() { vcard.classList.remove('show'); }
+
     function pick(mx, my) {
+      if (!qOn) return -1;
       const rot = projection.rotate(), cen = [-rot[0], -rot[1]];
       let best = -1, bd = 1e9;
       for (let i = 0; i < quakes.length; i++) {
@@ -912,6 +1109,17 @@
         const d = Math.hypot(p[0] - mx, p[1] - my);
         const thr = Math.max(12, magDot(q.mag) + 8);
         if (d < thr && d < bd) { bd = d; best = i; }
+      }
+      return best;
+    }
+    function pickVolcano(mx, my) {
+      if (!vOn) return -1;
+      let best = -1, bd = 1e9;
+      for (let i = 0; i < volcanoes.length; i++) {
+        const v = volcanoes[i];
+        if (v._sx == null) continue;
+        const d = Math.hypot(v._sx - mx, v._sy - my);
+        if (d < 13 && d < bd) { bd = d; best = i; }
       }
       return best;
     }
@@ -939,7 +1147,7 @@
     });
     canvas.addEventListener('pointermove', e => {
       if (!ptrs.has(e.pointerId)) {
-        if (ptrs.size === 0) { const [mx, my] = toLocal(e); canvas.style.cursor = pick(mx, my) >= 0 ? 'pointer' : 'grab'; }
+        if (ptrs.size === 0) { const [mx, my] = toLocal(e); canvas.style.cursor = (pick(mx, my) >= 0 || pickVolcano(mx, my) >= 0) ? 'pointer' : 'grab'; }
         return;
       }
       ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -953,6 +1161,7 @@
       if (!dragging && Math.hypot(dx, dy) > 4) {
         dragging = true; paused = true;
         if (selected >= 0) { selected = -1; hideCard(); }
+        if (selV >= 0) { selV = -1; hideVCard(); }
       }
       if (dragging) {
         const k = 0.34 / zoom;
@@ -972,8 +1181,12 @@
           dragging = false;
         } else {
           const [mx, my] = toLocal(e); const i = pick(mx, my);
-          if (i >= 0) { paused = true; showCard(i); }
-          else { selected = -1; paused = false; hideCard(); }
+          if (i >= 0) { selV = -1; hideVCard(); paused = true; showCard(i); }
+          else {
+            const vi = pickVolcano(mx, my);
+            if (vi >= 0) { selected = -1; hideCard(); paused = true; showVCard(vi); }
+            else { selected = -1; selV = -1; paused = false; hideCard(); hideVCard(); }
+          }
         }
       } else if (ptrs.size === 1) {
         const rem = [...ptrs.entries()][0];
@@ -1003,6 +1216,26 @@
     if (window.GlobeExplain && window.GlobeExplain.onStateChange) {
       window.GlobeExplain.onStateChange(locked => {
         $('explain-q').classList.toggle('locked', locked);
+      });
+    }
+    $('explain-v').addEventListener('click', e => {
+      e.stopPropagation();
+      if (selV < 0 || !volcanoes[selV] || !window.VolcanoExplain) return;
+      const v = volcanoes[selV];
+      const vid = [v.source, v.title || v.titleEn, v.coords[1].toFixed(3), v.coords[0].toFixed(3)].join('|');
+      window.VolcanoExplain.open({
+        id: vid, source: v.source,
+        name: v.title || '', nameEn: v.titleEn || v.title || '',
+        lat: v.coords[1], lon: v.coords[0],
+        level: v.level || null, kind: v.kind || '',
+        color: v.color || '', alert: v.alert || '', obs: v.obs || '',
+        date: v.date || null, report: v.report || '', rgb: v.rgb || '',
+      }, lang);
+      $('explain-v').classList.toggle('locked', window.VolcanoExplain.isLocked());
+    });
+    if (window.VolcanoExplain && window.VolcanoExplain.onStateChange) {
+      window.VolcanoExplain.onStateChange(locked => {
+        $('explain-v').classList.toggle('locked', locked);
       });
     }
     $('latest').addEventListener('click', () => { if (latestIdx >= 0) flyTo(quakes[latestIdx].coords, latestIdx); });
@@ -1065,6 +1298,16 @@
     });
 
     // ---------- plate-boundary toggle ----------
+    const quakeToggle = $('quake-toggle');
+    function syncQToggle() { quakeToggle.setAttribute('aria-pressed', qOn ? 'true' : 'false'); }
+    quakeToggle.addEventListener('click', () => {
+      qOn = !qOn;
+      try { localStorage.setItem('globe-quakes', qOn ? '1' : '0'); } catch (e) {}
+      if (!qOn && selected >= 0) { selected = -1; paused = false; hideCard(); }
+      syncQToggle();
+    });
+    syncQToggle();
+
     const plateToggle = $('plate-toggle');
     function syncPlateToggle() { plateToggle.setAttribute('aria-pressed', platesOn ? 'true' : 'false'); }
     plateToggle.addEventListener('click', () => {
@@ -1073,6 +1316,18 @@
       syncPlateToggle();
     });
     syncPlateToggle();
+
+    // ---------- volcano-activity toggle ----------
+    const vToggle = $('volcano-toggle');
+    function syncVToggle() { vToggle.setAttribute('aria-pressed', vOn ? 'true' : 'false'); }
+    vToggle.addEventListener('click', () => {
+      vOn = !vOn;
+      try { localStorage.setItem('globe-volcanoes', vOn ? '1' : '0'); } catch (e) {}
+      if (!vOn && selV >= 0) { selV = -1; paused = false; hideVCard(); }
+      syncVToggle();
+    });
+    syncVToggle();
+    $('vcard-close').addEventListener('click', () => { selV = -1; paused = false; hideVCard(); });
 
     // ---------- rotation pause/resume ----------
     const spinBtn = $('spin-toggle');
@@ -1109,6 +1364,7 @@
       applyStaticText();
       renderStats(); renderLatest();
       if (selected >= 0) { renderCard(); positionCard(); }
+      if (selV >= 0) { renderVCard(); positionVCard(); }
       [...document.querySelectorAll('.pill')].forEach(p => p.classList.toggle('active', p.dataset.code === code));
     }
     const bar = $('langbar');
