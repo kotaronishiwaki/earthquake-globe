@@ -32,12 +32,12 @@ const OUT = join(__dirname, 'out');
 const ENV = process.env;
 const ARGS = new Set(process.argv.slice(2));
 const DRY = ARGS.has('--dry');
-const ONCE = ARGS.has('--once') || DRY;
 const MIN_JMA_LEVEL = Number(ENV.MIN_JMA_LEVEL || 2);          // JMA: post level >= this (2 = warning)
 const POST_AVIATION = (ENV.POST_AVIATION || 'YELLOW,ORANGE,RED').toUpperCase().split(',').map(s => s.trim());
 const MAX_AGE_HOURS = Number(ENV.MAX_AGE_HOURS || 72);         // don't post a change whose report is older than this
 const SEED = ARGS.has('--seed');                              // record current state without posting
 const TEST = ARGS.has('--test') || ARGS.has('--force');      // post the single highest current alert NOW (end-to-end check)
+const ONCE = ARGS.has('--once') || DRY || SEED || TEST;      // any of these is a single pass, never a daemon
 // where to read JMA from — the deployed Netlify proxy already parses JMA's XML robustly
 const JMA_URL = ENV.JMA_VOLCANO_URL || 'https://globelabo.netlify.app/.netlify/functions/jma-volcano';
 const HANS = 'https://volcanoes.usgs.gov/hans-public/api/volcano/';
@@ -204,8 +204,21 @@ async function renderCard(browser, v, content) {
 // every volcano trips Bluesky's createSession rate limit (surfaces as an
 // "Invalid identifier or password" error after the first few).
 async function bskyLogin() {
+  // Trim stray whitespace/newlines (the #1 cause of bad GitHub secrets) and
+  // strip a leading "@" some people include on their handle.
+  const identifier = (ENV.BLUESKY_IDENTIFIER || '').trim().replace(/^@/, '');
+  const password = (ENV.BLUESKY_APP_PASSWORD || '').trim();
+  if (!identifier || !password) {
+    throw new Error('BLUESKY_IDENTIFIER / BLUESKY_APP_PASSWORD is empty — set both (handle like name.bsky.social + an App Password).');
+  }
+  const appPwOk = /^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/i.test(password);
+  log(`  Bluesky login as "${identifier}" (app-password format: ${appPwOk ? 'yes' : 'NO — use an App Password, not your account password'})`);
   const agent = new BskyAgent({ service: 'https://bsky.social' });
-  await agent.login({ identifier: ENV.BLUESKY_IDENTIFIER, password: ENV.BLUESKY_APP_PASSWORD });
+  try {
+    await agent.login({ identifier, password });
+  } catch (e) {
+    throw new Error(`${e.message} — check: (1) handle is "name.bsky.social" (no @, no typo), (2) BLUESKY_APP_PASSWORD is an App Password from Settings → App Passwords in the form xxxx-xxxx-xxxx-xxxx (NOT your login password), (3) no trailing spaces/newline in the secret.`);
+  }
   return agent;
 }
 async function postBluesky(agent, text, png, v) {
@@ -255,7 +268,10 @@ async function pass(browser) {
     const v = alerts.slice().sort((a, b) => b.sev - a.sev)[0];
     log(`TEST mode — posting highest current alert: ${v.nameEn || v.name} [${v.id}] ${signature(v)}`);
     let agent = null;
-    if (!DRY && ENV.POST_BLUESKY === '1') agent = await bskyLogin();
+    if (!DRY && ENV.POST_BLUESKY === '1') {
+      try { agent = await bskyLogin(); }
+      catch (e) { log(`  ✗ Bluesky login failed: ${e.message}`); }
+    }
     const content = await generateContent(v);
     log(`  edifice: ${content.edificeLabel.en} · hazards ${content.hazards.join(', ') || '—'}`);
     const png = await renderCard(browser, v, content);
@@ -265,10 +281,10 @@ async function pass(browser) {
       await writeFile(join(OUT, `${v.id}.txt`), buildPost(v, content, 300, 'updated').text);
       log(`  ✓ dry run → out/${v.id}.png (+ .txt)`);
     } else {
-      if (agent) await postBluesky(agent, buildPost(v, content, 300, 'updated').text, png, v);
-      if (ENV.POST_MASTODON === '1') await postMastodon(buildPost(v, content, 500, 'updated').text, png, v);
+      if (agent) { try { await postBluesky(agent, buildPost(v, content, 300, 'updated').text, png, v); } catch (e) { log(`  ✗ Bluesky post failed: ${e.message}`); } }
+      if (ENV.POST_MASTODON === '1') { try { await postMastodon(buildPost(v, content, 500, 'updated').text, png, v); } catch (e) { log(`  ✗ Mastodon post failed: ${e.message}`); } }
     }
-    log('  ✓ TEST post complete — check your Bluesky / Mastodon timeline. (Ledger left unchanged.)');
+    log('  ✓ TEST run complete — check your Bluesky / Mastodon timeline. (Ledger left unchanged.)');
     return;
   }
 
@@ -358,4 +374,7 @@ async function pass(browser) {
       while (true) { await new Promise(r => setTimeout(r, ms)); await pass(browser).catch(e => log('pass error', e.message)); }
     }
   } finally { if (ONCE) await browser.close(); }
+  // A stray Playwright/undici handle can keep the event loop alive after a
+  // single pass, leaving the Action "running" but idle. Exit explicitly.
+  if (ONCE) { log('Done.'); process.exit(0); }
 })();
