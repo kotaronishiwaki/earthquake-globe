@@ -99,6 +99,7 @@
     localeTags: ['敦煌', '中国'],
     regionLang: 'zh',
     disclaimer: { en: DISC.en, reg: DISC.zh },
+    pager: { alert: 'green' },
   };
 
   // ---- USGS fetch --------------------------------------------------------
@@ -118,6 +119,20 @@
       }
     } catch (e) {}
     return buildQuake({ id: f.id || id, mag: p.mag, place: p.place || '', lon: c[0], lat: c[1], depth: c[2] != null ? c[2] : 10, time: p.time, tsunami: p.tsunami, focal });
+  }
+
+  // USGS PAGER — official impact estimate (green/yellow/orange/red). Returns
+  // { alert } or null when no losspager product exists / on any error.
+  async function fetchPager(id) {
+    try {
+      const r = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=${encodeURIComponent(id)}&format=geojson`, { cache: 'force-cache' });
+      if (!r.ok) return null;
+      const j = await r.json();
+      const prods = j && j.properties && j.properties.products;
+      const lp = prods && prods.losspager && prods.losspager[0];
+      const alert = lp && lp.properties && (lp.properties.alertlevel || '').toLowerCase();
+      return (alert && ['green', 'yellow', 'orange', 'red'].indexOf(alert) >= 0) ? { alert } : null;
+    } catch (e) { return null; }
   }
   async function fetchLatestBig() {
     const r = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_month.geojson');
@@ -325,7 +340,8 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
       }
       setMsg('Generating mechanism explanation…');
       try {
-        const c = await generateContent(quake);
+        const [c, pager] = await Promise.all([generateContent(quake), fetchPager(id)]);
+        c.pager = pager;
         setContent(c); setStatus('ready'); setMsg('');
       } catch (e) {
         setStatus('error'); setMsg('AI generation failed (' + (e.message || 'error') + '). Quake loaded; explanation unavailable.');
