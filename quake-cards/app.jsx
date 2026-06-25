@@ -49,6 +49,18 @@
         hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }).format(new Date(ms)) + ' UTC';
     } catch (e) { return new Date(ms).toUTCString(); }
   }
+  // Epicenter-local datetime (primary) + UTC (secondary). zoneHint lets the
+  // auto-poster pass the IANA zone it computed server-side for a deterministic
+  // headless render; in the browser we look it up from lat/lon via GlobeTZ.
+  function whenParts(ms, lat, lon, regionLang, zoneHint) {
+    const loc = (regionLang && LOCALE[regionLang]) ? LOCALE[regionLang] : 'en-US';
+    const zone = zoneHint || (window.GlobeTZ ? window.GlobeTZ.zoneOf(lat, lon) : null);
+    const f = (tz) => new Intl.DateTimeFormat(loc, { year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).format(new Date(ms));
+    let utc; try { utc = f('UTC') + ' UTC'; } catch (e) { utc = new Date(ms).toUTCString(); }
+    let local = null; if (zone) { try { local = f(zone); } catch (e) { local = null; } }
+    return { local, utc, zone };
+  }
   function parseId(input) {
     const m = (input || '').match(/eq=([^&\s#]+)/);
     if (m) return decodeURIComponent(m[1]);
@@ -366,6 +378,12 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
     const [msg, setMsg] = useState('');
     const [showAll, setShowAll] = useState(false);
     const [exporting, setExporting] = useState(false);
+    // re-render once the tz database has loaded so the card can swap UTC → local time
+    const [tzReady, setTzReady] = useState(typeof window.tzlookup === 'function');
+    useEffect(() => {
+      if (typeof window.tzlookup === 'function') return;
+      if (window.GlobeTZ) window.GlobeTZ.ready().then(ok => { if (ok) setTzReady(true); });
+    }, []);
 
     const run = useCallback(async (rawInput) => {
       const id = parseId(rawInput);
@@ -399,7 +417,8 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
 
     const regMeta = content.regionLang ? { code: content.regionLang, ...LANGMETA[content.regionLang] } : null;
     const T = buildT(content.regionLang);
-    const qx = { ...q, depthClassTxt: depthClassTxt(q, content.regionLang), whenTxt: whenOf(q.time, content.regionLang) };
+    const whenP = whenParts(q.time, q.lat, q.lon, content.regionLang, q.tz);
+    const qx = { ...q, depthClassTxt: depthClassTxt(q, content.regionLang), whenTxt: whenP.local || whenP.utc, when: whenP };
     const cards = window.QuakeCards;
     const Hero = cards['globe-hero'].el;
 
