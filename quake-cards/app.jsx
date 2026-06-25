@@ -2,7 +2,7 @@
    bilingual (English + region-matched) mechanism explanation, and renders it
    into three comparable SNS card designs for Bluesky / Mastodon. */
 (function () {
-  const { useState, useEffect, useRef, useCallback } = React;
+  const { useState, useEffect, useRef, useCallback, useLayoutEffect } = React;
 
   const RED = '#cf4f2e', INK = '#2c2a27', MUT = '#8c887f', PAPER = '#f1eee8', SURF = '#fbfaf7', LINE = 'rgba(44,42,39,0.16)';
 
@@ -96,10 +96,11 @@
     continuity: { en: 'Smaller aftershocks are likely for days to weeks. A larger quake is unlikely, but stay aware just in case.', reg: '未来数日至数周可能有较小余震。更大地震可能性不大，但请保持留意。' },
     tsunamiRisk: 'none',
     tsunamiNote: { en: 'It happened on land, far from the sea, so no sea floor was lifted. A tsunami is not expected.', reg: '地震发生在陆地，远离海洋，没有抬升海底，因此不会引发海啸。' },
+    expectedImpact: { en: 'The 2008 M8.1 Yutian quake (~95 km E) brought violent shaking and damaged vulnerable buildings; a 1996 M6.9 (~140 km SW) was widely felt. This event is smaller, but stay ready for strong aftershocks.', reg: '2008年于田8.1级地震（约东95公里）造成剧烈晃动并损坏脆弱建筑；1996年6.9级（约西南140公里）震感广泛。本次较小，但仍需防范强余震。' },
     localeTags: ['敦煌', '中国'],
     regionLang: 'zh',
     disclaimer: { en: DISC.en, reg: DISC.zh },
-    pager: { alert: 'green', mmi: 6 },
+    pager: { alert: 'green', mmi: 6, fatalImg: 'quake-cards/sample/pager-fatal.png', econImg: 'quake-cards/sample/pager-econ.png', fatal: 'Green alert for shaking-related fatalities. There is a low likelihood of casualties.', econ: 'Green alert for economic losses. There is a low likelihood of damage.' },
   };
 
   // ---- USGS fetch --------------------------------------------------------
@@ -121,11 +122,12 @@
     return buildQuake({ id: f.id || id, mag: p.mag, place: p.place || '', lon: c[0], lat: c[1], depth: c[2] != null ? c[2] : 10, time: p.time, tsunami: p.tsunami, focal });
   }
 
-  // USGS PAGER — official impact estimate (green/yellow/orange/red). Returns
-  // { alert, mmi } or null when no losspager product exists / on any error.
-  // mmi is the peak shaking intensity (Modified Mercalli) — an honest local
-  // damage signal that can stay high even when the population-weighted alert
-  // is green; read from losspager, falling back to the shakemap product.
+  // USGS PAGER — official impact estimate (green/yellow/orange/red) plus the
+  // peak shaking intensity (MMI) and the official fatality / economic-loss
+  // probability charts. Returns { alert, mmi, fatalImg, econImg, fatal, econ }
+  // or null when no losspager product exists / on any error. The chart images
+  // are served straight from USGS; the one-line impact summaries come from the
+  // product's comments.json (impact1 = fatalities, impact2 = economic loss).
   async function fetchPager(id) {
     try {
       const r = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=${encodeURIComponent(id)}&format=geojson`, { cache: 'force-cache' });
@@ -139,7 +141,22 @@
       const rawMmi = (lp && lp.properties && lp.properties.maxmmi)
         || (sm && sm.properties && sm.properties.maxmmi);
       const mmi = rawMmi != null && !isNaN(parseFloat(rawMmi)) ? parseFloat(rawMmi) : null;
-      return { alert, mmi };
+      const C = lp.contents || {};
+      const byEnd = (suffix) => { const k = Object.keys(C).find(k => k.toLowerCase().endsWith(suffix)); return k && C[k] ? C[k].url : null; };
+      const out = {
+        alert, mmi,
+        fatalImg: byEnd('alertfatal_small.png') || byEnd('alertfatal.png'),
+        econImg: byEnd('alertecon_small.png') || byEnd('alertecon.png'),
+        fatal: null, econ: null,
+      };
+      const cUrl = byEnd('comments.json');
+      if (cUrl) {
+        try {
+          const cr = await fetch(cUrl, { cache: 'force-cache' });
+          if (cr.ok) { const cj = await cr.json(); out.fatal = cj.impact1 || null; out.econ = cj.impact2 || null; }
+        } catch (e) {}
+      }
+      return out;
     } catch (e) { return null; }
   }
   async function fetchLatestBig() {
@@ -177,6 +194,7 @@ Return ONLY raw JSON (no markdown, no prose) with EXACTLY this shape:
   "continuity": { "en": "...", "reg": "..." },
   "tsunamiRisk": "none" | "low" | "moderate" | "high",
   "tsunamiNote": { "en": "...", "reg": "..." } or null,
+  "expectedImpact": { "en": "...", "reg": "..." } or null,
   "localeTags": ["...", "..."],
   "regionLang": "ja"|"zh"|"hi"|"es"|"ar"|null
 }
@@ -188,6 +206,7 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
 - "continuity": whether aftershocks are likely, how strong, and for how long — plainly and calmly. <= 22 words.
 - "tsunamiRisk": judge honestly. Offshore + shallow + subduction/reverse + roughly M7 or larger => "high". Offshore + moderate size or less direct => "moderate". Onshore, deep, small, or strike-slip => "low" or "none".
 - "tsunamiNote": one plain sentence explaining WHY the risk is at that level (e.g. "It was deep and far inland, so no sea floor was lifted and a tsunami is not expected."). Always provide. <= 24 words.
+- "expectedImpact": Recall ONE or TWO well-documented past earthquakes of similar size in or very near this same region; name each with its year and state plainly what level of impact it had (strong shaking, building damage, casualties, tsunami). Then say what people here should be prepared for now. Frame it explicitly as historical context for scale, NOT a precise forecast. Do NOT invent specific casualty figures you are unsure of. If no comparable regional quake is well documented, set to null. <= 50 words.
 - "localeTags": exactly two short hashtag words written IN the chosen regionLang — the nearest well-known place and the country (NO # symbol, no spaces), e.g. Japanese ["能登","日本"], Chinese ["敦煌","中国"], Spanish ["Oaxaca","México"]. If regionLang is null, use [].
 - If regionLang is null, set every "reg" value to null. Otherwise every "reg" value must be written in that language, in the same warm plain style, using its standard public word for a tectonic plate (Japanese プレート, Chinese 板块, Hindi टेक्टोनिक प्लेट, Spanish placa, Arabic صفيحة).
 - Keep every "en" value 100% natural English; never insert a non-English word into "en".
@@ -208,6 +227,7 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
       continuity: norm(o.continuity) || { en: '', reg: null },
       tsunamiRisk: ['none', 'low', 'moderate', 'high'].indexOf(o.tsunamiRisk) >= 0 ? o.tsunamiRisk : null,
       tsunamiNote: o.tsunamiNote ? norm(o.tsunamiNote) : null,
+      expectedImpact: o.expectedImpact ? norm(o.expectedImpact) : null,
       localeTags: rl && Array.isArray(o.localeTags) ? o.localeTags.filter(Boolean).slice(0, 3) : [],
       regionLang: rl,
       disclaimer: { en: DISC.en, reg: rl ? DISC[rl] : null },
@@ -268,16 +288,28 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
   }
 
   // ---- scaled card frame -------------------------------------------------
+  // Measures the rendered card's natural height so a taller card (e.g. the
+  // Globe Hero with PAGER charts + section 04) is framed without clipping.
   function CardFrame({ label, children, w = 372 }) {
     const scale = w / 1080;
+    const innerRef = useRef(null);
+    const [natH, setNatH] = useState(1350);
+    useLayoutEffect(() => {
+      const el = innerRef.current; if (!el) return;
+      const measure = () => { const h = el.scrollHeight; if (h && Math.abs(h - natH) > 1) setNatH(h); };
+      measure();
+      const ro = (typeof ResizeObserver !== 'undefined') ? new ResizeObserver(measure) : null;
+      if (ro) ro.observe(el);
+      return () => { if (ro) ro.disconnect(); };
+    });
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: RED }} />
           <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: INK }}>{label}</span>
         </div>
-        <div style={{ width: w, height: 1350 * scale, overflow: 'hidden', boxShadow: '0 18px 50px -24px rgba(44,42,39,0.5)', border: '1px solid ' + LINE, background: PAPER }}>
-          <div style={{ width: 1080, height: 1350, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+        <div style={{ width: w, height: natH * scale, overflow: 'hidden', boxShadow: '0 18px 50px -24px rgba(44,42,39,0.5)', border: '1px solid ' + LINE, background: PAPER }}>
+          <div ref={innerRef} style={{ width: 1080, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
             {children}
           </div>
         </div>
@@ -385,6 +417,8 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
       setExporting(true);
       // html-to-image stalls embedding a live <canvas> in this sandbox, so we skip
       // the canvas during capture and composite the globe back in afterwards.
+      // The card height is dynamic (PAGER charts / section 04), so measure it.
+      const natH = Math.max(1, Math.round(node.getBoundingClientRect().height / (node.getBoundingClientRect().width / 1080)));
       const canvas = node.querySelector('canvas');
       let box = null;
       if (canvas) {
@@ -395,11 +429,11 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
       }
       const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
       try {
-        const url = await withTimeout(window.htmlToImage.toPng(node, { pixelRatio: 1, width: 1080, height: 1350, backgroundColor: '#fbfaf7', skipFonts: true, style: { transform: 'none' }, filter: (n) => n.tagName !== 'CANVAS' }), 22000);
-        const out = document.createElement('canvas'); out.width = 1080; out.height = 1350;
+        const url = await withTimeout(window.htmlToImage.toPng(node, { pixelRatio: 1, width: 1080, height: natH, backgroundColor: '#fbfaf7', skipFonts: true, style: { transform: 'none' }, filter: (n) => n.tagName !== 'CANVAS' }), 22000);
+        const out = document.createElement('canvas'); out.width = 1080; out.height = natH;
         const cx = out.getContext('2d');
         const im = new Image(); im.src = url; await im.decode();
-        cx.drawImage(im, 0, 0, 1080, 1350);
+        cx.drawImage(im, 0, 0, 1080, natH);
         if (canvas && box) {
           const side = Math.min(box.w, box.h);
           cx.drawImage(canvas, box.x + (box.w - side) / 2, box.y + (box.h - side) / 2, side, side);
@@ -414,7 +448,7 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
 
     if (EXPORT) {
       return (
-        <div style={{ width: 1080, height: 1350 }}>
+        <div style={{ width: 1080 }}>
           <Hero q={qx} content={content} regMeta={regMeta} T={T} />
         </div>
       );

@@ -55,6 +55,17 @@
     return { roman: ROMAN[v] || String(v), word: (w[lang] || w.en) };
   }
 
+  // "Past similar quakes" (section 04) + USGS PAGER fatality / economic-loss
+  // chart labels — localized, matching the web explanation page wording.
+  const IMPACT_LABEL = { en: 'Similar past quakes nearby', ja: '過去の類似地震', zh: '附近的类似历史地震', hi: 'आस-पास के समान भूकंप', es: 'Sismos similares anteriores', ar: 'زلازل سابقة مشابهة' };
+  const PG_FATAL = { en: 'Estimated fatalities', ja: '推定死者数', zh: '预估死亡人数', hi: 'अनुमानित मृत्यु', es: 'Víctimas estimadas', ar: 'الوفيات المقدّرة' };
+  const PG_ECON  = { en: 'Estimated economic loss', ja: '推定経済損失', zh: '预估经济损失', hi: 'अनुमानित आर्थिक क्षति', es: 'Pérdidas económicas estimadas', ar: 'الخسائر الاقتصادية المقدّرة' };
+  const PG_SRC   = { en: 'Official USGS PAGER estimate — a probability range, not a confirmed count.', ja: 'USGS PAGER による公式推定。確率分布であり確定値ではありません。', zh: 'USGS PAGER 官方估计。为概率分布，非确切数字。', hi: 'USGS PAGER आधिकारिक अनुमान — संभावना रेंज, निश्चित संख्या नहीं।', es: 'Estimación oficial USGS PAGER: un rango de probabilidad, no una cifra confirmada.', ar: 'تقدير رسمي من USGS PAGER — نطاق احتمالي وليس رقمًا مؤكّدًا.' };
+  const pagerChartsOf = (content) => {
+    const p = content && content.pager;
+    return (p && (p.fatalImg || p.econImg)) ? p : null;
+  };
+
   // ---- shared atoms ------------------------------------------------------
   function Logomark({ size = 40, dark = false }) {
     const bg = dark ? '#3a3733' : PAPER;
@@ -198,6 +209,33 @@
     );
   }
 
+  // USGS PAGER fatality + economic-loss probability charts — the official
+  // images straight from the losspager product, with the one-line impact
+  // summaries. The honest "how bad locally" signal, even under a green alert.
+  function PagerCharts({ pager, lang, dark }) {
+    if (!pager || (!pager.fatalImg && !pager.econImg)) return null;
+    const ink = dark ? PAPER : INK;
+    const sub = dark ? 'rgba(241,238,232,0.62)' : MUT;
+    const lineC = dark ? 'rgba(241,238,232,0.2)' : LINE;
+    const bg = dark ? 'rgba(241,238,232,0.05)' : PAPER;
+    const metric = (label, img, txt) => (!img && !txt) ? null : (
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: sub, fontWeight: 600, marginBottom: 8 }}>{label}</div>
+        {img && <img src={img} alt={label} crossOrigin="anonymous" style={{ width: '100%', height: 132, objectFit: 'contain', objectPosition: 'left center', background: dark ? 'transparent' : '#fff', border: `1px solid ${lineC}` }} />}
+        {txt && <div style={{ fontSize: 14.5, lineHeight: 1.34, color: ink, marginTop: 8, textWrap: 'pretty' }}>{txt}</div>}
+      </div>
+    );
+    return (
+      <div style={{ background: bg, border: `1px solid ${lineC}`, borderLeft: `7px solid ${MUT}`, padding: '13px 22px 14px' }}>
+        <div style={{ display: 'flex', gap: 34, alignItems: 'flex-start' }}>
+          {metric(PG_FATAL[lang] || PG_FATAL.en, pager.fatalImg, pager.fatal)}
+          {metric(PG_ECON[lang] || PG_ECON.en, pager.econImg, pager.econ)}
+        </div>
+        <div style={{ fontSize: 12, color: sub, marginTop: 11, lineHeight: 1.4 }}>{PG_SRC[lang] || PG_SRC.en}</div>
+      </div>
+    );
+  }
+
   function Disclaimer({ d, regMeta, dark }) {
     const col = dark ? 'rgba(241,238,232,0.5)' : MUT;
     return (
@@ -311,14 +349,19 @@
   function CardGlobeHero({ q, content, regMeta, T }) {
     const rootRef = useRef(null), sectRef = useRef(null);
     const [fit, setFit] = useState(1);
+    // The card grows taller when the official PAGER charts and/or a "past
+    // similar quakes" paragraph are present, so each has real room.
+    const charts = pagerChartsOf(content);
+    const hasImpact = !!(content.expectedImpact && content.expectedImpact.en);
+    const CARD_H = 1350 + (charts ? 215 : 0) + (hasImpact ? 112 : 0);
     // Reset the fit whenever the quake or its content changes…
     useLayoutEffect(() => { setFit(1); }, [q.id, content]);
     // …then shrink the section text just enough that the card (incl. footer)
-    // fits 1350px. Verbose languages (Spanish, German…) need this; English is 1.
+    // fits its height. Verbose languages (Spanish, German…) need this; English is 1.
     useLayoutEffect(() => {
       const root = rootRef.current, sect = sectRef.current;
       if (!root || !sect) return;
-      const over = root.scrollHeight - 1350;
+      const over = root.scrollHeight - CARD_H;
       if (over > 0 && fit > 0.62) {
         const h = sect.offsetHeight || 1;
         const next = Math.max(0.62, fit * Math.max(0.5, (h - over) / h));
@@ -326,7 +369,7 @@
       }
     }, [fit, q.id, content]);
     return (
-      <div ref={rootRef} data-export-card="globe-hero" style={{ width: 1080, height: 1350, background: SURF, color: INK, fontFamily: SANS,
+      <div ref={rootRef} data-export-card="globe-hero" style={{ width: 1080, height: CARD_H, background: SURF, color: INK, fontFamily: SANS,
         padding: '44px 58px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
@@ -339,16 +382,21 @@
         <MagBlock q={q} T={T} regMeta={regMeta} size={102} />
         <MetaGrid q={q} T={T} regMeta={regMeta} />
 
-        {/* USGS PAGER official impact estimate — only when a product exists */}
+        {/* USGS PAGER official impact estimate — colour banner + official charts */}
         {pagerOf(content) && <PagerBanner alert={content.pager.alert} mmi={content.pager.mmi} lang={content.regionLang} regMeta={regMeta} />}
+        {charts && <PagerCharts pager={content.pager} lang={content.regionLang} />}
 
         {/* globe (location) + large fault diagram (mechanism), side by side */}
-        <div style={{ display: 'flex', gap: 22, height: pagerOf(content) ? 248 : 286 }}>
+        {(() => {
+          const rowH = pagerOf(content) ? 252 : 286;
+          const globePx = Math.min(238, rowH - 40);
+          return (
+        <div style={{ display: 'flex', gap: 22, height: rowH }}>
           <div style={{ flex: '0 0 290px', background: PAPER, border: `1px solid ${LINE}`,
             display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '10px 14px 0' }}><Eyebrow size={13}>{T.coord ? 'Epicenter · ' + T.coord : 'Epicenter'}</Eyebrow></div>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <GlobeMini q={q} px={pagerOf(content) ? 202 : 238} />
+              <GlobeMini q={q} px={globePx} />
             </div>
           </div>
           <div style={{ flex: 1, background: PAPER, border: `1px solid ${LINE}`, padding: '12px 22px 14px',
@@ -371,8 +419,10 @@
             </div>
           </div>
         </div>
+          );
+        })()}
 
-        {/* sections + tsunami in a 2×2 grid — text auto-shrinks to fit */}
+        {/* mechanism sections (01–03) + past-similar (04) — text auto-shrinks to fit */}
         <div ref={sectRef} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: `${Math.round(18 * fit)}px 40px`, flex: 1, alignContent: 'start' }}>
           <Section n="01" labelEn="Main cause" labelReg={T.cause} regMeta={regMeta}
             body={<Bilingual en={content.mainCause.en} reg={content.mainCause.reg} regMeta={regMeta} enSize={20 * fit} regSize={18 * fit} gap={7 * fit} />} />
@@ -380,8 +430,14 @@
             body={<Bilingual en={content.nature.en} reg={content.nature.reg} regMeta={regMeta} enSize={20 * fit} regSize={18 * fit} gap={7 * fit} />} />
           <Section n="03" labelEn="Aftershocks" labelReg={T.cont} regMeta={regMeta}
             body={<Bilingual en={content.continuity.en} reg={content.continuity.reg} regMeta={regMeta} enSize={20 * fit} regSize={18 * fit} gap={7 * fit} />} />
-          <TsunamiBanner risk={riskOf(content)} note={content.tsunamiNote} regMeta={regMeta} lang={content.regionLang} compact fontScale={fit} />
+          {hasImpact
+            ? <Section n="04" labelEn="Similar past quakes nearby" labelReg={IMPACT_LABEL[content.regionLang]} regMeta={regMeta}
+                body={<Bilingual en={content.expectedImpact.en} reg={content.expectedImpact.reg} regMeta={regMeta} enSize={20 * fit} regSize={18 * fit} gap={7 * fit} />} />
+            : <TsunamiBanner risk={riskOf(content)} note={content.tsunamiNote} regMeta={regMeta} lang={content.regionLang} compact fontScale={fit} />}
         </div>
+
+        {/* when section 04 occupies the grid, the tsunami banner runs full-width below */}
+        {hasImpact && <TsunamiBanner risk={riskOf(content)} note={content.tsunamiNote} regMeta={regMeta} lang={content.regionLang} compact fontScale={fit} />}
 
         <Disclaimer d={content.disclaimer} regMeta={regMeta} />
         <Footer q={q} />
