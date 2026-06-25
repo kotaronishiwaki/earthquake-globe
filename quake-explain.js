@@ -67,6 +67,20 @@
       return new Intl.DateTimeFormat(LOCALE[lang] || 'en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }).format(new Date(ms)) + ' UTC';
     } catch (e) { return new Date(ms).toUTCString(); }
   }
+  // localized word for "local (time)" — the people first looking at a fresh quake
+  // are usually nearby, so the epicenter-local datetime leads; UTC stays small.
+  const LOCALWORD = { ja: '現地', zh: '当地', hi: 'स्थानीय', es: 'Local', ar: 'محلي', en: 'Local' };
+  function whenInner(ms, lat, lon, lang) {
+    const loc = LOCALE[lang] || 'en-US';
+    const info = window.GlobeTZ ? window.GlobeTZ.format(ms, lat, lon, loc) : null;
+    if (info && info.local) {
+      const word = LOCALWORD[lang] || LOCALWORD.en;
+      return '<div class="v">' + esc(info.local)
+        + ' <span style="font-size:.66em;color:#8c887f;font-weight:500;white-space:nowrap;">' + esc(word) + '</span></div>'
+        + '<div style="font-size:11px;color:#8c887f;margin-top:3px;font-variant-numeric:tabular-nums;letter-spacing:.02em;">' + esc(info.utc) + '</div>';
+    }
+    return '<div class="v">' + esc(whenOf(ms, lang)) + '</div>';
+  }
   function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
 
   // ───────────────────────── fault diagrams (brand SVG, localized) ─────────────────────────
@@ -443,12 +457,11 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
     const L = LOC[lang] || LOC.en;
     const dir = RTL[lang] ? ' dir="rtl"' : '';
     const dc = q.depthClass;
-    const meta = [
-      [L.depth, Math.round(q.depth) + ' km'],
-      [L.cls, L[dc]],
-      [L.when, whenOf(q.time, lang)],
-      [L.epi, coordOf(q.lat, q.lon)],
-    ].map(m => `<div><div class="k">${esc(m[0])}</div><div class="v">${esc(m[1])}</div></div>`).join('');
+    const meta =
+      [[L.depth, Math.round(q.depth) + ' km'], [L.cls, L[dc]]]
+        .map(m => `<div><div class="k">${esc(m[0])}</div><div class="v">${esc(m[1])}</div></div>`).join('')
+      + `<div><div class="k">${esc(L.when)}</div><div id="ex-when-cell">${whenInner(q.time, q.lat, q.lon, lang)}</div></div>`
+      + `<div><div class="k">${esc(L.epi)}</div><div class="v">${esc(coordOf(q.lat, q.lon))}</div></div>`;
 
     const sec = (n, label, field) => {
       if (!field || (!field.en && !field.reg)) return '';
@@ -489,6 +502,15 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
        <div class="ex-tsu-label">${esc(L.tsunami)}</div>
        ${tsunami}
        <div class="ex-disc"><div class="label">${esc(L.disc)}</div><div class="t">${esc(DISC.en)}</div>${discReg}</div>`;
+
+    // The epicenter-local time needs the tz database, which loads lazily. If it
+    // wasn't ready when we built the meta cell, refresh just that cell once it is.
+    if (window.GlobeTZ && typeof window.tzlookup !== 'function') {
+      window.GlobeTZ.ready().then(function () {
+        const el = panel.querySelector('#ex-when-cell');
+        if (el) el.innerHTML = whenInner(q.time, q.lat, q.lon, lang);
+      });
+    }
   }
 
   // ───────────────────────── USGS PAGER (official impact estimate) ─────────────────────────
