@@ -13,6 +13,7 @@
  * on Node 20+, or export the vars yourself / let CI inject them).
  */
 import { chromium } from 'playwright';
+import tzlookup from 'tz-lookup';
 import { BskyAgent, RichText } from '@atproto/api';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -60,7 +61,24 @@ async function fetchNewQuakes(posted) {
 // ── Claude ──────────────────────────────────────────────────────────
 function depthClass(d) { return d < 70 ? 'shallow' : d < 300 ? 'intermediate' : 'deep'; }
 
+// USGS PAGER official alert level (green/yellow/orange/red) or null.
+async function fetchPagerAlert(id) {
+  if (!id) return null;
+  try {
+    const r = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=${encodeURIComponent(id)}&format=geojson`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    const lp = j && j.properties && j.properties.products && j.properties.products.losspager && j.properties.products.losspager[0];
+    const alert = lp && lp.properties && (lp.properties.alertlevel || '').toLowerCase();
+    return (alert && ['green', 'yellow', 'orange', 'red'].indexOf(alert) >= 0) ? { alert } : null;
+  } catch (e) { return null; }
+}
+
 async function generateContent(q) {
+  const big = Number(q.mag) >= 6;
+  const toneBlock = big
+    ? `This is a STRONG earthquake (M${q.mag}). Be calm and clear but do NOT minimize or over-reassure: a quake this size can cause real damage and casualties, strong aftershocks are likely, and if it is offshore and shallow a tsunami is possible. Steer the reader toward caution; never imply unproven safety.`
+    : `Be calm and clear; measured reassurance is fine where the data supports it, but never overstate safety.`;
   const prompt = `You are a seismologist writing a warm, clear explanation of an earthquake for ordinary members of the public — people with no science background. It will appear on a social media card.
 
 Earthquake facts:
@@ -86,12 +104,12 @@ Return ONLY raw JSON (no markdown) with EXACTLY this shape:
   "regionLang": "ja"|"zh"|"hi"|"es"|"ar"|null
 }
 
-Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargon; if you must use a term, explain it in a few words. Be calm and reassuring, never alarmist. Keep each text field SHORT — it must fit on a card.
+Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargon; if you must use a term, explain it in a few words. ${toneBlock} Keep each text field SHORT — it must fit on a card.
 - "faultTypeLabel": the fault type in friendly words (e.g. "Subduction thrust", "Strike-slip"). Keep it short.
 - "mainCause": which plates or forces moved, and why, in plain language. <= 22 words.
 - "nature": what the depth and size meant for how strong and widespread the shaking was. <= 22 words.
-- "continuity": whether aftershocks are likely, how strong, and for how long — plainly and calmly. <= 22 words.
-- "tsunamiRisk": judge honestly. Offshore + shallow + subduction/reverse + roughly M7 or larger => "high". Offshore + moderate size or less direct => "moderate". Onshore, deep, small, or strike-slip => "low" or "none".
+- "continuity": whether aftershocks are likely, how strong, and for how long — factual and complete, not downplayed. <= 22 words.
+- "tsunamiRisk": judge honestly. Offshore + shallow + subduction/reverse + roughly M7 or larger => "high". Offshore + moderate size or less direct => "moderate". Onshore, deep, small, or strike-slip => "low" or "none". If the USGS tsunami flag is "yes", do NOT rate below "moderate".
 - "tsunamiNote": one plain sentence explaining WHY the risk is at that level. Always provide. <= 24 words.
 - "localeTags": exactly two short hashtag words written IN the chosen regionLang — the nearest well-known place and the country (NO # symbol, no spaces), e.g. Japanese ["能登","日本"], Chinese ["敦煌","中国"]. If regionLang is null, use [].
 - If regionLang is null, set every "reg" value to null. Otherwise write each "reg" in that language, same warm plain style, using its standard public word for a tectonic plate.
@@ -124,12 +142,31 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
     mainCause: norm(o.mainCause) || { en: '', reg: null },
     nature: norm(o.nature) || { en: '', reg: null },
     continuity: norm(o.continuity) || { en: '', reg: null },
-    tsunamiRisk: ['none', 'low', 'moderate', 'high'].indexOf(o.tsunamiRisk) >= 0 ? o.tsunamiRisk : null,
+    tsunamiRisk: (() => { let r = ['none', 'low', 'moderate', 'high'].indexOf(o.tsunamiRisk) >= 0 ? o.tsunamiRisk : null; if (q.tsunami && (r === 'none' || r === 'low' || !r)) r = 'moderate'; return r; })(),
     tsunamiNote: o.tsunamiNote ? norm(o.tsunamiNote) : null,
     localeTags: rl && Array.isArray(o.localeTags) ? o.localeTags.filter(Boolean).slice(0, 3) : [],
     regionLang: rl,
+    pager: await fetchPagerAlert(q.id),
     disclaimer: { en: DISC_EN, reg: null },
   };
+}
+
+// ── epicenter-local time ────────────────────────────────────
+const LOCALWORD = { ja: '現地', zh: '当地', hi: 'स्थानीय', es: 'Local', ar: 'محلي' };
+function epiZone(lat, lon) {
+  try { return tzlookup(Number(lat), Number(lon)); } catch (e) { return null; }
+}
+// short local line for the post body, e.g. "現地 6/25 14:30" / "Local Jun 25, 14:30"
+function localLine(q, regionLang) {
+  const zone = epiZone(q.lat, q.lon);
+  if (!zone) return '';
+  const loc = LANGS[regionLang] || 'en-US';
+  let t;
+  try {
+    t = new Intl.DateTimeFormat(loc, { month: 'numeric', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: false, timeZone: zone }).format(new Date(q.time));
+  } catch (e) { return ''; }
+  return (LOCALWORD[regionLang] || 'Local') + ' ' + t;
 }
 
 // ── post text (English + region language, fitted to a char limit) ───
@@ -158,7 +195,8 @@ function placeTags(place) {
 }
 function buildPost(q, content, limit) {
   const url = `https://globelabo.netlify.app/#eq=${q.id}`;
-  const head = `M${q.mag.toFixed(1)} earthquake · ${q.place}`;
+  const localStr = localLine(q, content.regionLang);
+  const head = `M${q.mag.toFixed(1)} earthquake · ${q.place}` + (localStr ? `\n${localStr}` : '');
   let names;
   if (content.regionLang && content.localeTags && content.localeTags.length) {
     const seen = new Set();
@@ -188,7 +226,7 @@ async function renderCard(browser, q, content) {
   const page = await browser.newPage({ viewport: { width: 1200, height: 1500 }, deviceScaleFactor: 2 });
   await page.goto(HTML + '?export=globe-hero', { waitUntil: 'networkidle' });
   await page.waitForFunction('window.__studioReady === true', { timeout: 20000 });
-  await page.evaluate(({ qr, c }) => window.__studio.render(qr, c), { qr: q, c: content });
+  await page.evaluate(({ qr, c }) => window.__studio.render(qr, c), { qr: { ...q, tz: epiZone(q.lat, q.lon) }, c: content });
   await page.waitForTimeout(2500);            // globe canvas + ripples settle
   await page.evaluate(() => document.fonts.ready);
   const el = await page.waitForSelector('[data-export-card="globe-hero"]');
