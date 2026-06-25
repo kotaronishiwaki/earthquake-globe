@@ -23,28 +23,10 @@ const DISC_EN = 'Automated explanation from USGS data for general awareness — 
 
 function depthClass(d) { return d < 70 ? 'shallow' : d < 300 ? 'intermediate' : 'deep'; }
 
-// USGS PAGER official alert level (green/yellow/orange/red) or null.
-async function fetchPagerAlert(id) {
-  if (!id) return null;
-  try {
-    const r = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=${encodeURIComponent(id)}&format=geojson`);
-    if (!r.ok) return null;
-    const j = await r.json();
-    const lp = j && j.properties && j.properties.products && j.properties.products.losspager && j.properties.products.losspager[0];
-    const alert = lp && lp.properties && (lp.properties.alertlevel || '').toLowerCase();
-    return (alert && ['green', 'yellow', 'orange', 'red'].indexOf(alert) >= 0) ? { alert } : null;
-  } catch (e) { return null; }
-}
-
 // ── Claude：発震機構の多言語 JSON を生成 ───────────────────────────────
 async function generateContent(q) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error('ANTHROPIC_API_KEY not set');
-
-  const big = Number(q.mag) >= 6;
-  const toneBlock = big
-    ? `This is a STRONG earthquake (M${q.mag}). Be calm and clear but do NOT minimize or over-reassure: a quake this size can cause real damage and casualties, strong aftershocks are likely, and if it is offshore and shallow a tsunami is possible. Steer the reader toward caution; never imply unproven safety.`
-    : `Be calm and clear; measured reassurance is fine where the data supports it, but never overstate safety.`;
 
   const prompt = `You are a seismologist writing a warm, clear explanation of an earthquake for ordinary members of the public — people with no science background. It will appear on a social media card.
 
@@ -67,17 +49,19 @@ Return ONLY raw JSON (no markdown) with EXACTLY this shape:
   "continuity": { "en": "...", "reg": "..." },
   "tsunamiRisk": "none" | "low" | "moderate" | "high",
   "tsunamiNote": { "en": "...", "reg": "..." } or null,
+  "expectedImpact": { "en": "...", "reg": "..." } or null,
   "localeTags": ["...", "..."],
   "regionLang": "ja"|"zh"|"hi"|"es"|"ar"|null
 }
 
-Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargon; if you must use a term, explain it in a few words. ${toneBlock} Keep each text field SHORT — it must fit on a card.
+Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargon; if you must use a term, explain it in a few words. Be calm and reassuring, never alarmist. Keep each text field SHORT — it must fit on a card.
 - "faultTypeLabel": the fault type in friendly words (e.g. "Subduction thrust", "Strike-slip"). Keep it short.
 - "mainCause": which plates or forces moved, and why, in plain language. <= 22 words.
 - "nature": what the depth and size meant for how strong and widespread the shaking was. <= 22 words.
-- "continuity": whether aftershocks are likely, how strong, and for how long — factual and complete, not downplayed. <= 22 words.
-- "tsunamiRisk": judge honestly. Offshore + shallow + subduction/reverse + roughly M7 or larger => "high". Offshore + moderate size or less direct => "moderate". Onshore, deep, small, or strike-slip => "low" or "none". If the USGS tsunami flag is "yes", do NOT rate below "moderate".
+- "continuity": whether aftershocks are likely, how strong, and for how long — plainly and calmly. <= 22 words.
+- "tsunamiRisk": judge honestly. Offshore + shallow + subduction/reverse + roughly M7 or larger => "high". Offshore + moderate size or less direct => "moderate". Onshore, deep, small, or strike-slip => "low" or "none".
 - "tsunamiNote": one plain sentence explaining WHY the risk is at that level. Always provide. <= 24 words.
+- "expectedImpact": Recall ONE or TWO well-documented past earthquakes of similar size in or very near this same region; name each with its year and state plainly what level of impact it had (strong shaking, building damage, casualties, tsunami). Then say what people here should be prepared for now. Frame it as historical context for scale, NOT a precise forecast. Do NOT invent casualty figures you are unsure of. If no comparable regional quake is well documented, set to null. <= 50 words.
 - "localeTags": exactly two short hashtag words written IN the chosen regionLang — the nearest well-known place and the country (NO # symbol, no spaces), e.g. Japanese ["能登","日本"], Chinese ["敦煌","中国"]. If regionLang is null, use [].
 - If regionLang is null, set every "reg" value to null. Otherwise write each "reg" in that language, same warm plain style, using its standard public word for a tectonic plate.
 - Keep every "en" value 100% natural English. Be factual and specific to this region. Do NOT restate the magnitude or place name in the text fields.`;
@@ -109,11 +93,11 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
     mainCause: norm(o.mainCause) || { en: '', reg: null },
     nature: norm(o.nature) || { en: '', reg: null },
     continuity: norm(o.continuity) || { en: '', reg: null },
-    tsunamiRisk: (() => { let r = ['none', 'low', 'moderate', 'high'].indexOf(o.tsunamiRisk) >= 0 ? o.tsunamiRisk : null; if (q.tsunami && (r === 'none' || r === 'low' || !r)) r = 'moderate'; return r; })(),
+    tsunamiRisk: ['none', 'low', 'moderate', 'high'].indexOf(o.tsunamiRisk) >= 0 ? o.tsunamiRisk : null,
     tsunamiNote: o.tsunamiNote ? norm(o.tsunamiNote) : null,
+    expectedImpact: o.expectedImpact ? norm(o.expectedImpact) : null,
     localeTags: rl && Array.isArray(o.localeTags) ? o.localeTags.filter(Boolean).slice(0, 3) : [],
     regionLang: rl,
-    pager: await fetchPagerAlert(q.id),
     disclaimer: { en: DISC_EN, reg: null },
   };
 }
@@ -128,7 +112,7 @@ async function renderCard(q, content) {
     args: ['--allow-file-access-from-files', '--disable-web-security'],
   });
   try {
-    const page = await browser.newPage({ viewport: { width: 1200, height: 1500 }, deviceScaleFactor: 2 });
+    const page = await browser.newPage({ viewport: { width: 1200, height: 1900 }, deviceScaleFactor: 2 });
     await page.goto(HTML + '?export=globe-hero', { waitUntil: 'networkidle' });
     await page.waitForFunction('window.__studioReady === true', { timeout: 20000 });
     // 生の地震データ（studio 側の buildQuake が整形する）
@@ -137,6 +121,12 @@ async function renderCard(q, content) {
     await page.evaluate(({ qr, c }) => window.__studio.render(qr, c), { qr, c: content });
     await page.waitForTimeout(2500);            // 地球儀 canvas とリップルが落ち着くのを待つ
     await page.evaluate(() => document.fonts.ready);
+    // PAGER の公式チャート画像（USGS から配信）が読み込まれるのを待つ
+    await page.evaluate(() => Promise.all(
+      Array.from(document.querySelectorAll('[data-export-card="globe-hero"] img'))
+        .filter(im => !im.complete)
+        .map(im => new Promise(res => { im.onload = im.onerror = res; }))
+    )).catch(() => {});
     const el = await page.waitForSelector('[data-export-card="globe-hero"]');
     const buf = await el.screenshot({ type: 'png' });
     return buf;
@@ -207,12 +197,52 @@ function buildHeroPost(q, content, url, limit) {
   return fit();
 }
 
+// ── USGS PAGER：公式の被害推定（緑/黄/橙/赤）＋最大ゆれ強さ(MMI)＋公式の
+//    死者数／経済損失の確率分布チャート画像 ──────────────────────────────
+// { alert, mmi, fatalImg, econImg, fatal, econ } を返す。losspager プロダクト
+// が無い／失敗時は null。チャート画像は USGS から直接配信。fatal/econ の一文は
+// プロダクトの comments.json（impact1=死者数, impact2=経済損失）から取得。
+async function fetchPager(id) {
+  try {
+    const r = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=${encodeURIComponent(id)}&format=geojson`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    const prods = j && j.properties && j.properties.products;
+    const lp = prods && prods.losspager && prods.losspager[0];
+    const alert = lp && lp.properties && (lp.properties.alertlevel || '').toLowerCase();
+    if (!alert || ['green', 'yellow', 'orange', 'red'].indexOf(alert) < 0) return null;
+    const sm = prods && prods.shakemap && prods.shakemap[0];
+    const rawMmi = (lp && lp.properties && lp.properties.maxmmi)
+      || (sm && sm.properties && sm.properties.maxmmi);
+    const mmi = rawMmi != null && !isNaN(parseFloat(rawMmi)) ? parseFloat(rawMmi) : null;
+    const C = lp.contents || {};
+    const byEnd = (suffix) => { const k = Object.keys(C).find(k => k.toLowerCase().endsWith(suffix)); return k && C[k] ? C[k].url : null; };
+    const out = {
+      alert, mmi,
+      fatalImg: byEnd('alertfatal_small.png') || byEnd('alertfatal.png'),
+      econImg: byEnd('alertecon_small.png') || byEnd('alertecon.png'),
+      fatal: null, econ: null,
+    };
+    const cUrl = byEnd('comments.json');
+    if (cUrl) {
+      try {
+        const cr = await fetch(cUrl);
+        if (cr.ok) { const cj = await cr.json(); out.fatal = cj.impact1 || null; out.econ = cj.impact2 || null; }
+      } catch (e) {}
+    }
+    return out;
+  } catch (e) { return null; }
+}
+
 /**
  * @param {{id,mag,place,depth,time,tsunami,lon,lat}} q
  * @returns {Promise<{png:Buffer, content:object}>}  失敗時は throw
  */
 async function buildGlobeHero(q) {
   const content = await generateContent(q);
+  // 公式の被害推定（PAGER）を付与。失敗時は静かに省略。過去の類似地震は
+  // generateContent が expectedImpact（AIプローズ）として返す。
+  content.pager = await fetchPager(q.id);
   const png = await renderCard(q, content);
   return { png, content };
 }
