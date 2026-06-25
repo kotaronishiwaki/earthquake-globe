@@ -89,6 +89,19 @@
 .ex-tsunami .tsu-body .reg { font-size: 14px; line-height: 1.55; color: rgba(44, 42, 39, 0.6); margin-top: 5px; text-wrap: pretty; }
 [dir="rtl"] .ex-tsunami .tsu-body { padding-inline-start: 34px; }
 
+/* --- USGS PAGER (official impact estimate) --- */
+.ex-pager { margin: 22px 0 0; padding: 15px 17px; border: 1px solid var(--pgc, #cf4f2e); background: var(--pgbg, rgba(207,79,46,0.07)); }
+.ex-pager .pg-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ex-pager .pg-title { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #2c2a27; font-weight: 600; }
+.ex-pager .pg-chip { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: var(--pgc, #cf4f2e); }
+.ex-pager .pg-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--pgc, #cf4f2e); flex: none; }
+.ex-pager .pg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; margin-top: 13px; }
+@media (max-width: 480px) { .ex-pager .pg-grid { grid-template-columns: 1fr; } }
+.ex-pager .pg-mlabel { font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #8c887f; font-weight: 600; margin-bottom: 7px; }
+.ex-pager .pg-img { width: 100%; max-width: 240px; height: auto; display: block; border: 1px solid rgba(44,42,39,0.1); background: #fff; }
+.ex-pager .pg-txt { font-size: 12.5px; line-height: 1.5; color: rgba(44,42,39,0.72); margin-top: 7px; text-wrap: pretty; }
+.ex-pager .pg-src { font-size: 11px; line-height: 1.4; color: #8c887f; margin-top: 12px; }
+
 /* --- disclaimer --- */
 .ex-disc { border-top: 1px solid rgba(44, 42, 39, 0.16); padding-top: 14px; margin-top: 22px; }
 .ex-disc .label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #8c887f; font-weight: 600; margin-bottom: 6px; }

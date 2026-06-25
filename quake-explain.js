@@ -31,12 +31,12 @@
   };
 
   const LOC = {
-    ja: { eyebrow: '地震のメカニズム', depth: '深さ', cls: '深さ区分', when: '発生', epi: '震央', shallow: '浅い', intermediate: 'やや深い', deep: '深い', faultTag: '断層型', cause: 'なぜ起きた？', nature: 'どんな揺れ？', after: '余震は？', tsunami: '津波のリスク', disc: '注意事項', btn: '解説', fetching: '震源データを取得中…', generating: 'AIが発震機構を解説中…', errGen: '解説の生成に失敗しました。', retry: '再試行', payTitle: 'AI解説をすべて見る', payBody: 'AIが震源ごとに「なぜ起きたか・どんな揺れか・余震や津波の見込み」をやさしく解説します。本日の無料分を使い切りました。', f1: '回数無制限のAI解説', f2: 'あなたの言語＋英語の対訳', f3: '津波リスク評価と断層型の図解', unlock: 'パスを購入', restore: '購入済みを復元', fine: 'いつでも解約できます。', quota: '本日の無料解説：残り %n 回', paid: 'パス有効', loadingPay: '決済ページへ移動中…' },
-    en: { eyebrow: 'Earthquake mechanism', depth: 'Depth', cls: 'Class', when: 'When', epi: 'Epicenter', shallow: 'Shallow', intermediate: 'Intermediate', deep: 'Deep', faultTag: 'Fault type', cause: 'Why it happened', nature: 'How it was felt', after: 'Aftershocks', tsunami: 'Tsunami risk', disc: 'Disclaimer', btn: 'Explain', fetching: 'Fetching quake data…', generating: 'AI is explaining the mechanism…', errGen: 'Could not generate the explanation.', retry: 'Retry', payTitle: 'See every AI explanation', payBody: 'AI explains, in plain language, why each quake happened, how it was felt, and the aftershock and tsunami outlook. You have used today’s free explanations.', f1: 'Unlimited AI explanations', f2: 'Your language + English', f3: 'Tsunami risk rating & fault diagrams', unlock: 'Unlock', restore: 'Restore purchase', fine: 'Cancel anytime.', quota: '%n free explanation(s) left today', paid: 'Pass active', loadingPay: 'Opening checkout…' },
-    zh: { eyebrow: '震源机制解说', depth: '深度', cls: '分类', when: '发生', epi: '震中', shallow: '浅', intermediate: '较深', deep: '深', faultTag: '断层类型', cause: '为何发生', nature: '震感如何', after: '余震情况', tsunami: '海啸风险', disc: '注意事项', btn: '解说', fetching: '正在获取震源数据…', generating: 'AI正在解说震源机制…', errGen: '解说生成失败。', retry: '重试', payTitle: '查看全部AI解说', payBody: 'AI用通俗语言解说每次地震为何发生、震感如何，以及余震和海啸展望。今日免费次数已用完。', f1: '无限次AI解说', f2: '你的语言＋英文对照', f3: '海啸风险评级与断层图解', unlock: '购买通行证', restore: '恢复购买', fine: '可随时取消。', quota: '今日免费解说：剩余 %n 次', paid: '通行证有效', loadingPay: '正在打开结算页…' },
-    hi: { eyebrow: 'भूकंप तंत्र', depth: 'गहराई', cls: 'श्रेणी', when: 'कब', epi: 'अधिकेंद्र', shallow: 'उथला', intermediate: 'मध्यम', deep: 'गहरा', faultTag: 'भ्रंश प्रकार', cause: 'क्यों हुआ', nature: 'कैसा महसूस हुआ', after: 'आफ्टरशॉक', tsunami: 'सुनामी जोखिम', disc: 'अस्वीकरण', btn: 'व्याख्या', fetching: 'भूकंप डेटा ला रहे हैं…', generating: 'AI तंत्र समझा रहा है…', errGen: 'व्याख्या नहीं बन सकी।', retry: 'पुनः', payTitle: 'सभी AI व्याख्याएँ देखें', payBody: 'AI सरल भाषा में बताता है कि हर भूकंप क्यों आया, कैसा महसूस हुआ, और आफ्टरशॉक व सुनामी की संभावना। आज की मुफ़्त व्याख्याएँ समाप्त।', f1: 'असीमित AI व्याख्या', f2: 'आपकी भाषा + अंग्रेज़ी', f3: 'सुनामी जोखिम रेटिंग व भ्रंश चित्र', unlock: 'पास खरीदें', restore: 'खरीद बहाल करें', fine: 'कभी भी रद्द करें।', quota: 'आज मुफ़्त: %n शेष', paid: 'पास सक्रिय', loadingPay: 'चेकआउट खुल रहा है…' },
-    es: { eyebrow: 'Mecanismo sísmico', depth: 'Profundidad', cls: 'Clase', when: 'Cuándo', epi: 'Epicentro', shallow: 'Superficial', intermediate: 'Intermedio', deep: 'Profundo', faultTag: 'Tipo de falla', cause: 'Por qué ocurrió', nature: 'Cómo se sintió', after: 'Réplicas', tsunami: 'Riesgo de tsunami', disc: 'Aviso', btn: 'Explicar', fetching: 'Obteniendo datos…', generating: 'La IA explica el mecanismo…', errGen: 'No se pudo generar la explicación.', retry: 'Reintentar', payTitle: 'Ver todas las explicaciones', payBody: 'La IA explica, en lenguaje sencillo, por qué ocurrió cada sismo, cómo se sintió y el panorama de réplicas y tsunami. Agotaste las gratuitas de hoy.', f1: 'Explicaciones IA ilimitadas', f2: 'Tu idioma + inglés', f3: 'Nivel de riesgo de tsunami y fallas', unlock: 'Desbloquear', restore: 'Restaurar compra', fine: 'Cancela cuando quieras.', quota: '%n explicación(es) gratis hoy', paid: 'Pase activo', loadingPay: 'Abriendo pago…' },
-    ar: { eyebrow: 'آلية الزلزال', depth: 'العمق', cls: 'التصنيف', when: 'الوقت', epi: 'المركز', shallow: 'ضحل', intermediate: 'متوسط', deep: 'عميق', faultTag: 'نوع الصدع', cause: 'لماذا حدث', nature: 'كيف شُعر به', after: 'التوابع', tsunami: 'خطر التسونامي', disc: 'تنويه', btn: 'شرح', fetching: 'جارٍ جلب البيانات…', generating: 'الذكاء الاصطناعي يشرح الآلية…', errGen: 'تعذّر إنشاء الشرح.', retry: 'إعادة', payTitle: 'شاهد كل الشروح', payBody: 'يشرح الذكاء الاصطناعي بلغة بسيطة سبب وقوع كل زلزال وكيف شُعر به وتوقعات التوابع والتسونامي. انتهت محاولاتك المجانية اليوم.', f1: 'شروح غير محدودة', f2: 'لغتك + الإنجليزية', f3: 'تقييم خطر التسونامي ورسوم الصدوع', unlock: 'فتح', restore: 'استعادة الشراء', fine: 'ألغِ في أي وقت.', quota: 'تبقّى %n شرح مجاني اليوم', paid: 'الاشتراك فعّال', loadingPay: 'فتح الدفع…' },
+    ja: { eyebrow: '地震のメカニズム', depth: '深さ', cls: '深さ区分', when: '発生', epi: '震央', shallow: '浅い', intermediate: 'やや深い', deep: '深い', faultTag: '断層型', cause: 'なぜ起きた？', nature: 'どんな揺れ？', after: '余震は？', tsunami: '津波のリスク', impact: '過去の類似地震', pager: 'USGS 被害推定（PAGER）', pagerLevel: '警戒レベル', pagerFatal: '推定死者数', pagerEcon: '推定経済損失', pagerSrc: 'USGS PAGER による公式推定。確率分布であり確定値ではありません。', disc: '注意事項', btn: '解説', fetching: '震源データを取得中…', generating: 'AIが発震機構を解説中…', errGen: '解説の生成に失敗しました。', retry: '再試行', payTitle: 'AI解説をすべて見る', payBody: 'AIが震源ごとに「なぜ起きたか・どんな揺れか・余震や津波の見込み」をやさしく解説します。本日の無料分を使い切りました。', f1: '回数無制限のAI解説', f2: 'あなたの言語＋英語の対訳', f3: '津波リスク評価と断層型の図解', unlock: 'パスを購入', restore: '購入済みを復元', fine: 'いつでも解約できます。', quota: '本日の無料解説：残り %n 回', paid: 'パス有効', loadingPay: '決済ページへ移動中…' },
+    en: { eyebrow: 'Earthquake mechanism', depth: 'Depth', cls: 'Class', when: 'When', epi: 'Epicenter', shallow: 'Shallow', intermediate: 'Intermediate', deep: 'Deep', faultTag: 'Fault type', cause: 'Why it happened', nature: 'How it was felt', after: 'Aftershocks', tsunami: 'Tsunami risk', impact: 'Similar past quakes nearby', pager: 'USGS impact estimate', pagerLevel: 'Alert level', pagerFatal: 'Estimated fatalities', pagerEcon: 'Estimated economic loss', pagerSrc: 'Official USGS PAGER estimate — a probability range, not a confirmed count.', disc: 'Disclaimer', btn: 'Explain', fetching: 'Fetching quake data…', generating: 'AI is explaining the mechanism…', errGen: 'Could not generate the explanation.', retry: 'Retry', payTitle: 'See every AI explanation', payBody: 'AI explains, in plain language, why each quake happened, how it was felt, and the aftershock and tsunami outlook. You have used today’s free explanations.', f1: 'Unlimited AI explanations', f2: 'Your language + English', f3: 'Tsunami risk rating & fault diagrams', unlock: 'Unlock', restore: 'Restore purchase', fine: 'Cancel anytime.', quota: '%n free explanation(s) left today', paid: 'Pass active', loadingPay: 'Opening checkout…' },
+    zh: { eyebrow: '震源机制解说', depth: '深度', cls: '分类', when: '发生', epi: '震中', shallow: '浅', intermediate: '较深', deep: '深', faultTag: '断层类型', cause: '为何发生', nature: '震感如何', after: '余震情况', tsunami: '海啸风险', impact: '附近的类似历史地震', pager: 'USGS 影响估计（PAGER）', pagerLevel: '警报级别', pagerFatal: '预估死亡人数', pagerEcon: '预估经济损失', pagerSrc: 'USGS PAGER 官方估计。为概率分布，非确切数字。', disc: '注意事项', btn: '解说', fetching: '正在获取震源数据…', generating: 'AI正在解说震源机制…', errGen: '解说生成失败。', retry: '重试', payTitle: '查看全部AI解说', payBody: 'AI用通俗语言解说每次地震为何发生、震感如何，以及余震和海啸展望。今日免费次数已用完。', f1: '无限次AI解说', f2: '你的语言＋英文对照', f3: '海啸风险评级与断层图解', unlock: '购买通行证', restore: '恢复购买', fine: '可随时取消。', quota: '今日免费解说：剩余 %n 次', paid: '通行证有效', loadingPay: '正在打开结算页…' },
+    hi: { eyebrow: 'भूकंप तंत्र', depth: 'गहराई', cls: 'श्रेणी', when: 'कब', epi: 'अधिकेंद्र', shallow: 'उथला', intermediate: 'मध्यम', deep: 'गहरा', faultTag: 'भ्रंश प्रकार', cause: 'क्यों हुआ', nature: 'कैसा महसूस हुआ', after: 'आफ्टरशॉक', tsunami: 'सुनामी जोखिम', impact: 'आस-पास के समान भूकंप', pager: 'USGS प्रभाव अनुमान (PAGER)', pagerLevel: 'चेतावनी स्तर', pagerFatal: 'अनुमानित मृत्यु', pagerEcon: 'अनुमानित आर्थिक क्षति', pagerSrc: 'USGS PAGER आधिकारिक अनुमान — संभावना रेंज, निश्चित संख्या नहीं।', disc: 'अस्वीकरण', btn: 'व्याख्या', fetching: 'भूकंप डेटा ला रहे हैं…', generating: 'AI तंत्र समझा रहा है…', errGen: 'व्याख्या नहीं बन सकी।', retry: 'पुनः', payTitle: 'सभी AI व्याख्याएँ देखें', payBody: 'AI सरल भाषा में बताता है कि हर भूकंप क्यों आया, कैसा महसूस हुआ, और आफ्टरशॉक व सुनामी की संभावना। आज की मुफ़्त व्याख्याएँ समाप्त।', f1: 'असीमित AI व्याख्या', f2: 'आपकी भाषा + अंग्रेज़ी', f3: 'सुनामी जोखिम रेटिंग व भ्रंश चित्र', unlock: 'पास खरीदें', restore: 'खरीद बहाल करें', fine: 'कभी भी रद्द करें।', quota: 'आज मुफ़्त: %n शेष', paid: 'पास सक्रिय', loadingPay: 'चेकआउट खुल रहा है…' },
+    es: { eyebrow: 'Mecanismo sísmico', depth: 'Profundidad', cls: 'Clase', when: 'Cuándo', epi: 'Epicentro', shallow: 'Superficial', intermediate: 'Intermedio', deep: 'Profundo', faultTag: 'Tipo de falla', cause: 'Por qué ocurrió', nature: 'Cómo se sintió', after: 'Réplicas', tsunami: 'Riesgo de tsunami', impact: 'Sismos similares anteriores', pager: 'Estimación de impacto USGS (PAGER)', pagerLevel: 'Nivel de alerta', pagerFatal: 'Víctimas estimadas', pagerEcon: 'Pérdidas económicas estimadas', pagerSrc: 'Estimación oficial USGS PAGER: un rango de probabilidad, no una cifra confirmada.', disc: 'Aviso', btn: 'Explicar', fetching: 'Obteniendo datos…', generating: 'La IA explica el mecanismo…', errGen: 'No se pudo generar la explicación.', retry: 'Reintentar', payTitle: 'Ver todas las explicaciones', payBody: 'La IA explica, en lenguaje sencillo, por qué ocurrió cada sismo, cómo se sintió y el panorama de réplicas y tsunami. Agotaste las gratuitas de hoy.', f1: 'Explicaciones IA ilimitadas', f2: 'Tu idioma + inglés', f3: 'Nivel de riesgo de tsunami y fallas', unlock: 'Desbloquear', restore: 'Restaurar compra', fine: 'Cancela cuando quieras.', quota: '%n explicación(es) gratis hoy', paid: 'Pase activo', loadingPay: 'Abriendo pago…' },
+    ar: { eyebrow: 'آلية الزلزال', depth: 'العمق', cls: 'التصنيف', when: 'الوقت', epi: 'المركز', shallow: 'ضحل', intermediate: 'متوسط', deep: 'عميق', faultTag: 'نوع الصدع', cause: 'لماذا حدث', nature: 'كيف شُعر به', after: 'التوابع', tsunami: 'خطر التسونامي', impact: 'زلازل سابقة مشابهة', pager: 'تقدير الأثر من USGS (PAGER)', pagerLevel: 'مستوى التحذير', pagerFatal: 'الوفيات المقدّرة', pagerEcon: 'الخسائر الاقتصادية المقدّرة', pagerSrc: 'تقدير رسمي من USGS PAGER — نطاق احتمالي وليس رقمًا مؤكّدًا.', disc: 'تنويه', btn: 'شرح', fetching: 'جارٍ جلب البيانات…', generating: 'الذكاء الاصطناعي يشرح الآلية…', errGen: 'تعذّر إنشاء الشرح.', retry: 'إعادة', payTitle: 'شاهد كل الشروح', payBody: 'يشرح الذكاء الاصطناعي بلغة بسيطة سبب وقوع كل زلزال وكيف شُعر به وتوقعات التوابع والتسونامي. انتهت محاولاتك المجانية اليوم.', f1: 'شروح غير محدودة', f2: 'لغتك + الإنجليزية', f3: 'تقييم خطر التسونامي ورسوم الصدوع', unlock: 'فتح', restore: 'استعادة الشراء', fine: 'ألغِ في أي وقت.', quota: 'تبقّى %n شرح مجاني اليوم', paid: 'الاشتراك فعّال', loadingPay: 'فتح الدفع…' },
   };
   const RTL = { ar: true };
 
@@ -46,6 +46,14 @@
     low:      { color: '#266e96', bg: 'rgba(38,110,150,0.09)',  label: { en: 'Low tsunami risk', ja: '津波リスク：低', zh: '海啸风险：低', hi: 'कम सुनामी जोखिम', es: 'Riesgo de tsunami bajo', ar: 'خطر تسونامي منخفض' } },
     moderate: { color: '#d98a2b', bg: 'rgba(217,138,43,0.12)',  label: { en: 'Moderate tsunami risk', ja: '津波リスク：中', zh: '海啸风险：中等', hi: 'मध्यम सुनामी जोखिम', es: 'Riesgo de tsunami moderado', ar: 'خطر تسونامي متوسط' } },
     high:     { color: '#cf4f2e', bg: 'rgba(207,79,46,0.11)',   label: { en: 'High tsunami risk', ja: '津波リスク：高', zh: '海啸风险：高', hi: 'उच्च सुनामी जोखिम', es: 'Riesgo de tsunami alto', ar: 'خطر تسونامي مرتفع' } },
+  };
+
+  // USGS PAGER alert levels — official impact estimate, colour + localized word
+  const PAGERLVL = {
+    green:  { color: '#5b9e6f', bg: 'rgba(91,158,111,0.10)', label: { en: 'Green',  ja: '緑', zh: '绿色', hi: 'हरा',    es: 'Verde',    ar: 'أخضر' } },
+    yellow: { color: '#c79a1e', bg: 'rgba(199,154,30,0.12)', label: { en: 'Yellow', ja: '黄', zh: '黄色', hi: 'पीला',   es: 'Amarillo', ar: 'أصفر' } },
+    orange: { color: '#d98a2b', bg: 'rgba(217,138,43,0.12)', label: { en: 'Orange', ja: '橙', zh: '橙色', hi: 'नारंगी', es: 'Naranja',  ar: 'برتقالي' } },
+    red:    { color: '#cf4f2e', bg: 'rgba(207,79,46,0.11)',  label: { en: 'Red',    ja: '赤', zh: '红色', hi: 'लाल',    es: 'Rojo',     ar: 'أحمر' } },
   };
 
   // ───────────────────────── helpers ─────────────────────────
@@ -185,6 +193,10 @@
   // ───────────────────────── Claude prompt ─────────────────────────
   function buildPrompt(q, lang) {
     const wantReg = lang !== 'en';
+    const big = Number(q.mag) >= 6;
+    const toneBlock = big
+      ? `IMPORTANT — this is a STRONG earthquake (M${q.mag}). Write calmly and clearly, but do NOT minimize, soften, or over-reassure. Plainly convey that a quake of this size can cause real damage, injuries and deaths near the epicenter; that strong aftershocks are likely; and, if it is offshore and shallow, that a tsunami is possible. Always steer the reader toward caution and official guidance, never away from it. Never imply a level of safety the data cannot support.`
+      : `Write calmly and clearly. Measured reassurance is fine where the data supports it, but stay factual and never overstate safety.`;
     const focalTxt = q.focal && q.focal.rake1 != null
       ? `Focal mechanism nodal plane: strike ${q.focal.strike1}°, dip ${q.focal.dip1}°, rake ${q.focal.rake1}°.`
       : 'No focal-mechanism solution available; infer from regional tectonics.';
@@ -208,16 +220,18 @@ Return ONLY raw JSON (no markdown) with EXACTLY this shape:
   "nature": { "en": "...", "reg": ${wantReg ? '"..."' : 'null'} },
   "continuity": { "en": "...", "reg": ${wantReg ? '"..."' : 'null'} },
   "tsunamiRisk": "none" | "low" | "moderate" | "high",
-  "tsunamiNote": { "en": "...", "reg": ${wantReg ? '"..."' : 'null'} }
+  "tsunamiNote": { "en": "...", "reg": ${wantReg ? '"..."' : 'null'} },
+  "expectedImpact": ${big ? `{ "en": "...", "reg": ${wantReg ? '"..."' : 'null'} }` : 'null'}
 }
 
-Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargon; if you must use a term, explain it in a few words. Be calm and reassuring, never alarmist.
+Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargon; if you must use a term, explain it in a few words. ${toneBlock}
 - "faultTypeLabel": the fault type in friendly words (e.g. "Subduction thrust", "Strike-slip"). Keep it short.
 - "mainCause": which plates or forces moved, and why, in plain language. <= 32 words.
-- "nature": what the depth and size meant for how strong and widespread the shaking was. <= 32 words.
-- "continuity": whether aftershocks are likely, how strong, and for how long — plainly and calmly. <= 32 words.
-- "tsunamiRisk": judge honestly. Offshore + shallow + subduction/reverse + roughly M7 or larger => "high". Offshore + moderate size or less direct => "moderate". Onshore, deep, small, or strike-slip => "low" or "none".
-- "tsunamiNote": one or two plain sentences explaining WHY the risk is at that level (e.g. "This quake was deep and far inland, so no sea floor was lifted and a tsunami is not expected."). Always provide. <= 36 words.
+- "nature": what the depth and size meant for how strong and widespread the shaking was — and, for a strong quake, how heavily it was likely felt and what damage is plausible. <= ${big ? 45 : 32} words.
+- "continuity": whether aftershocks are likely, how strong, and for how long — factual and complete, not downplayed. <= ${big ? 45 : 32} words.
+- "tsunamiRisk": judge honestly. Offshore + shallow + subduction/reverse + roughly M7 or larger => "high". Offshore + moderate size or less direct => "moderate". Onshore, deep, small, or strike-slip => "low" or "none". If the USGS tsunami flag is "yes", do NOT rate below "moderate".
+- "tsunamiNote": one or two plain sentences explaining WHY the risk is at that level (e.g. "This quake was deep and far inland, so no sea floor was lifted and a tsunami is not expected."). Always provide. <= ${big ? 50 : 36} words.
+- "expectedImpact": ${big ? 'Recall ONE or TWO well-documented past earthquakes of similar size in or very near this same region; name each with its year and state plainly what level of impact it had (strong shaking, building damage, casualties, tsunami). Then say what people here should be prepared for now. Frame it explicitly as historical context for scale, NOT a precise forecast. Do NOT invent specific casualty figures you are unsure of. <= 55 words.' : 'Set to null for a quake of this size.'}
 - ${wantReg ? `Every "reg" value MUST be written in ${langName}, in the same warm plain style.` : 'Set every "reg" to null.'}
 - LANGUAGE SEPARATION IS ABSOLUTE: every "en" value is 100% natural English (use the word "plate" / "tectonic plate"); NEVER insert a non-English word into "en". The localized plate term belongs ONLY in "reg".
 - In each "reg" value, use that language's standard public term for a tectonic plate: Japanese プレート (never 板; e.g. インドプレート、ユーラシアプレート), Simplified Chinese 板块, Hindi टेक्टोनिक प्लेट, Spanish placa, Arabic صفيحة.
@@ -239,6 +253,7 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
       continuity: norm(o.continuity) || { en: '', reg: null },
       tsunamiRisk: ['none', 'low', 'moderate', 'high'].indexOf(o.tsunamiRisk) >= 0 ? o.tsunamiRisk : null,
       tsunamiNote: o.tsunamiNote ? norm(o.tsunamiNote) : null,
+      expectedImpact: o.expectedImpact ? norm(o.expectedImpact) : null,
     };
   }
 
@@ -246,7 +261,7 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
   const PASS_KEY = 'globe-explain-pass';
   const USE_KEY = 'globe-explain-usage';
   const CACHE_KEY = 'globe-explain-cache';
-  const CACHE_VER = 'v2';        // bump to invalidate old cached shapes
+  const CACHE_VER = 'v3';        // bump to invalidate old cached shapes
 
   function getPass() { try { return localStorage.getItem(PASS_KEY) || ''; } catch (e) { return ''; } }
   function setPass(t) { try { t ? localStorage.setItem(PASS_KEY, t) : localStorage.removeItem(PASS_KEY); } catch (e) {} notifyState(); }
@@ -469,10 +484,87 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
          ${sec('01', L.cause, c.mainCause)}
          ${sec('02', L.nature, c.nature)}
          ${sec('03', L.after, c.continuity)}
+         ${sec('04', L.impact, c.expectedImpact)}
        </div>
        <div class="ex-tsu-label">${esc(L.tsunami)}</div>
        ${tsunami}
        <div class="ex-disc"><div class="label">${esc(L.disc)}</div><div class="t">${esc(DISC.en)}</div>${discReg}</div>`;
+  }
+
+  // ───────────────────────── USGS PAGER (official impact estimate) ─────────────────────────
+  // Fetches the event's losspager product straight from USGS (CORS-enabled) and
+  // surfaces the official green/yellow/orange/red alert plus the fatality &
+  // economic-loss probability charts. Returns null when no PAGER product exists
+  // (small quakes / no population exposure) or on any network error.
+  const _pagerCache = {};
+  async function fetchPager(q) {
+    if (!q || !q.id) return null;
+    if (_pagerCache[q.id] !== undefined) return _pagerCache[q.id];
+    let out = null;
+    try {
+      const r = await fetch('https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=' + encodeURIComponent(q.id) + '&format=geojson', { cache: 'force-cache' });
+      if (r.ok) {
+        const j = await r.json();
+        const prods = j && j.properties && j.properties.products;
+        const lp = prods && prods.losspager && prods.losspager[0];
+        const alert = lp && lp.properties && (lp.properties.alertlevel || '').toLowerCase();
+        if (lp && PAGERLVL[alert]) {
+          const C = lp.contents || {};
+          const byEnd = (suffix) => { const k = Object.keys(C).find(k => k.toLowerCase().endsWith(suffix)); return k && C[k] ? C[k].url : null; };
+          out = {
+            alert: alert,
+            maxmmi: lp.properties.maxmmi || null,
+            fatalImg: byEnd('alertfatal_small.png') || byEnd('alertfatal.png'),
+            econImg: byEnd('alertecon_small.png') || byEnd('alertecon.png'),
+            fatal: null, econ: null,
+          };
+          const cUrl = byEnd('comments.json');
+          if (cUrl) {
+            try {
+              const cr = await fetch(cUrl, { cache: 'force-cache' });
+              if (cr.ok) { const cj = await cr.json(); out.fatal = cj.impact1 || null; out.econ = cj.impact2 || null; }
+            } catch (e) {}
+          }
+        }
+      }
+    } catch (e) { out = null; }
+    _pagerCache[q.id] = out;
+    return out;
+  }
+
+  function pagerHtml(p, lang) {
+    const L = LOC[lang] || LOC.en;
+    const pg = PAGERLVL[p.alert] || PAGERLVL.green;
+    const lvl = pg.label[lang] || pg.label.en;
+    const metric = (label, img, txt) =>
+      (!img && !txt) ? '' :
+      `<div class="pg-metric">
+         <div class="pg-mlabel">${esc(label)}</div>
+         ${img ? `<img class="pg-img" src="${esc(img)}" alt="${esc(label)}" loading="lazy" onerror="this.remove()">` : ''}
+         ${txt ? `<div class="pg-txt">${esc(txt)}</div>` : ''}
+       </div>`;
+    return `<div class="ex-pager" style="--pgc:${pg.color};--pgbg:${pg.bg}">
+        <div class="pg-head">
+          <span class="pg-title">${esc(L.pager)}</span>
+          <span class="pg-chip"><span class="pg-dot"></span>${esc(L.pagerLevel)}: ${esc(lvl)}</span>
+        </div>
+        <div class="pg-grid">
+          ${metric(L.pagerFatal, p.fatalImg, p.fatal)}
+          ${metric(L.pagerEcon, p.econImg, p.econ)}
+        </div>
+        <div class="pg-src">${esc(L.pagerSrc)}</div>
+      </div>`;
+  }
+
+  function injectPager(p, lang) {
+    if (!p || !panel || panel.querySelector('.ex-pager')) return;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = pagerHtml(p, lang);
+    const node = wrap.firstElementChild;
+    if (!node) return;
+    const anchor = panel.querySelector('.ex-tsu-label');
+    if (anchor) anchor.parentNode.insertBefore(node, anchor);
+    else panel.appendChild(node);
   }
 
   // ───────────────────────── flow ─────────────────────────
@@ -482,20 +574,27 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
     if (RTL[lang]) overlay.querySelector('.ex-panel').setAttribute('dir', 'rtl');
     else overlay.querySelector('.ex-panel').removeAttribute('dir');
 
+    // PAGER official impact estimate runs in parallel, only for sizeable events.
+    const pagerP = (Number(q.mag) >= 5.5) ? fetchPager(q).catch(() => null) : Promise.resolve(null);
+
     const cached = cacheGet(q.id, lang);
-    if (cached && !force) { renderContent(q, cached, lang); return; }
+    if (cached && !force) { renderContent(q, cached, lang); pagerP.then(p => injectPager(p, lang)); return; }
 
     if (!canGenerate()) { renderPaywall(lang); return; }
 
     renderLoading(L.generating, hasPass() ? '' : (freeLeft() > 0 ? L.quota.replace('%n', freeLeft()) : ''));
     try {
       const c = await generate(q, lang);
+      // Safety floor: a USGS-flagged tsunami is never shown below moderate risk.
+      if (q.tsunami && (c.tsunamiRisk === 'none' || c.tsunamiRisk === 'low' || !c.tsunamiRisk)) c.tsunamiRisk = 'moderate';
       cacheSet(q.id, lang, c);
       if (!hasPass()) bumpUsage();
       renderContent(q, c, lang);
+      pagerP.then(p => injectPager(p, lang));
     } catch (e) {
       if (e && e.paywall) { markExhausted(); renderPaywall(lang); return; }
       renderError(L.errGen, lang);
+      pagerP.then(p => injectPager(p, lang));
     }
   }
 
@@ -514,6 +613,7 @@ Write for a NON-EXPERT. Use plain everyday words and full sentences. Avoid jargo
     hasPass: hasPass,
     // host can subscribe to lock-state changes (e.g. after a server 402)
     onStateChange(fn) { if (typeof fn === 'function') stateListeners.push(fn); },
+    _fetchPager: fetchPager,
   };
   window.GlobeExplain = Api;
 
