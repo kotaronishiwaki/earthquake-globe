@@ -138,11 +138,25 @@
         <div style={{ fontSize: 25, fontWeight: 600, color: c2, fontVariantNumeric: 'tabular-nums', lineHeight: 1.05 }}>{v}</div>
       </div>
     );
+    const whenCell = () => {
+      const w = (q.when && typeof q.when === 'object') ? q.when : null;
+      const main = w ? (w.local || w.utc) : q.whenTxt;
+      const sub = (w && w.local) ? w.utc : null;
+      return (
+        <div>
+          <div style={{ fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: c1, marginBottom: 4 }}>
+            When{T.when && regMeta ? <span style={{ fontFamily: regMeta.font }}> · {T.when}</span> : ''}
+          </div>
+          <div style={{ fontSize: 25, fontWeight: 600, color: c2, fontVariantNumeric: 'tabular-nums', lineHeight: 1.05 }}>{main}</div>
+          {sub && <div style={{ fontSize: 13, fontWeight: 500, color: c1, marginTop: 3, fontVariantNumeric: 'tabular-nums', letterSpacing: '0.02em' }}>{sub}</div>}
+        </div>
+      );
+    };
     return (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 30px' }}>
         {cell('Depth', T.depth, q.depthTxt)}
         {cell('Class', T.cls, q.depthClassTxt)}
-        {cell('When', T.when, q.whenTxt)}
+        {whenCell()}
         {cell('Epicenter', T.coord, q.coordTxt)}
       </div>
     );
@@ -221,7 +235,7 @@
     const metric = (label, img, txt) => (!img && !txt) ? null : (
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <div style={{ fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: sub, fontWeight: 600, marginBottom: 8 }}>{label}</div>
-        {img && <img src={img} alt={label} crossOrigin="anonymous" style={{ width: '100%', height: 132, objectFit: 'contain', objectPosition: 'left center', background: dark ? 'transparent' : '#fff', border: `1px solid ${lineC}` }} />}
+        {img && <img src={img} alt={label} crossOrigin="anonymous" onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ width: '100%', height: 132, objectFit: 'contain', objectPosition: 'left center', background: dark ? 'transparent' : '#fff', border: `1px solid ${lineC}` }} />}
         {txt && <div style={{ fontSize: 14.5, lineHeight: 1.34, color: ink, marginTop: 8, textWrap: 'pretty' }}>{txt}</div>}
       </div>
     );
