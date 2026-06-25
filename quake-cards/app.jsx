@@ -99,7 +99,7 @@
     localeTags: ['敦煌', '中国'],
     regionLang: 'zh',
     disclaimer: { en: DISC.en, reg: DISC.zh },
-    pager: { alert: 'green' },
+    pager: { alert: 'green', mmi: 6 },
   };
 
   // ---- USGS fetch --------------------------------------------------------
@@ -122,7 +122,10 @@
   }
 
   // USGS PAGER — official impact estimate (green/yellow/orange/red). Returns
-  // { alert } or null when no losspager product exists / on any error.
+  // { alert, mmi } or null when no losspager product exists / on any error.
+  // mmi is the peak shaking intensity (Modified Mercalli) — an honest local
+  // damage signal that can stay high even when the population-weighted alert
+  // is green; read from losspager, falling back to the shakemap product.
   async function fetchPager(id) {
     try {
       const r = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=${encodeURIComponent(id)}&format=geojson`, { cache: 'force-cache' });
@@ -131,7 +134,12 @@
       const prods = j && j.properties && j.properties.products;
       const lp = prods && prods.losspager && prods.losspager[0];
       const alert = lp && lp.properties && (lp.properties.alertlevel || '').toLowerCase();
-      return (alert && ['green', 'yellow', 'orange', 'red'].indexOf(alert) >= 0) ? { alert } : null;
+      if (!alert || ['green', 'yellow', 'orange', 'red'].indexOf(alert) < 0) return null;
+      const sm = prods && prods.shakemap && prods.shakemap[0];
+      const rawMmi = (lp && lp.properties && lp.properties.maxmmi)
+        || (sm && sm.properties && sm.properties.maxmmi);
+      const mmi = rawMmi != null && !isNaN(parseFloat(rawMmi)) ? parseFloat(rawMmi) : null;
+      return { alert, mmi };
     } catch (e) { return null; }
   }
   async function fetchLatestBig() {
