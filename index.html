@@ -600,13 +600,13 @@
     let volcanoes = [], selV = -1;
     let sOn = false;
     try { sOn = localStorage.getItem('globe-solar') === '1'; } catch (e) {}
-    let flares = [], selS = -1;
+    let flares = [], selS = -1, flareLinkDone = false;
     let userPaused = false;
     try { userPaused = localStorage.getItem('globe-spin') === '0'; } catch (e) {}
 
     // view state
     let rotX = 0, rotY = TILT, zoom = 1;
-    let flying = false, flyT = 0, flyFrom = null, flyTarget = null, flyPendSelect = null;
+    let flying = false, flyT = 0, flyFrom = null, flyTarget = null, flyPendSelect = null, flyPendSolar = null;
     let inertia = false, momentum = 0;
 
     // filter + timeline
@@ -907,9 +907,10 @@
       flyPendSelect = (sel == null ? null : sel);
     }
     function endFly() {
-      if (flyPendSelect != null) { showCard(flyPendSelect); paused = true; }
+      if (flyPendSolar != null) { showSCard(flyPendSolar); paused = true; }
+      else if (flyPendSelect != null) { showCard(flyPendSelect); paused = true; }
       else { paused = false; }
-      flyPendSelect = null;
+      flyPendSelect = null; flyPendSolar = null;
     }
 
     // ---------- data ----------
@@ -1105,6 +1106,24 @@
       }
       list.sort((a, b) => Date.parse(a.peak) - Date.parse(b.peak));
       flares = list.map((f, idx) => { f.phase = (idx * 0.61803398875) % 1; return f; });
+      // first load only: honor a #flare=<id> deep-link (shared by the auto-poster's
+      // "Live map" link). Turn the solar layer on, fly the sub-solar point into view,
+      // and open that flare's card. Flares age out of SWPC's 7-day feed, so a link to
+      // an older flare simply lands on the globe with the solar layer enabled.
+      if (!flareLinkDone) {
+        flareLinkDone = true;
+        const hm = (location.hash || '').match(/flare=([^&]+)/);
+        if (hm) {
+          if (!sOn) {
+            sOn = true;
+            try { localStorage.setItem('globe-solar', '1'); } catch (e) {}
+            const st = $('solar-toggle'); if (st) st.setAttribute('aria-pressed', 'true');
+          }
+          const id = decodeURIComponent(hm[1]);
+          const j = flares.findIndex(f => f.id === id);
+          if (j >= 0) { flyPendSolar = j; flyTo(flares[j].coords, null); }
+        }
+      }
       if (selS >= 0) { renderSCard(); positionSCard(); }
     }
 
