@@ -138,7 +138,7 @@
           </svg>
           <span style={{ fontSize: compact ? 17 : 19, fontWeight: 700, color: AMBER, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{T.outlook}</span>
         </div>
-        <Bilingual en={o.en} reg={o.reg} regMeta={regMeta} enSize={compact ? 19 : 21} regSize={compact ? 17 : 19} color={INK} mutedReg="rgba(44,42,39,0.62)" />
+        <Bilingual en={o.en} reg={o.reg} regMeta={regMeta} enSize={compact ? 19 : 21} regSize={compact ? 17 : 19} color={INK} mutedReg="rgba(44,42,39,0.62)" clampEn={2} clampReg={2} />
       </div>
     );
   }
@@ -216,26 +216,32 @@
         {/* radio-blackout (R) ladder — the hero visual */}
         <window.RScaleLadder flux={f.flux} rScale={f.rScale} lang={content.regionLang || 'en'} />
 
-        {/* globe (sub-solar point) + Sun→Earth diagram (mechanism) */}
-        <div style={{ display: 'flex', gap: 18, height: 196 }}>
-          <div style={{ flex: '0 0 252px', background: PAPER, border: `1px solid ${LINE}`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ padding: '9px 14px 0' }}>
-              <Eyebrow size={13}>{T.region}</Eyebrow>
-              <div style={{ fontSize: 16, fontWeight: 600, color: INK, marginTop: 3, fontVariantNumeric: 'tabular-nums' }}>{f.coordTxt}</div>
-            </div>
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-              <GlobeMini f={f} px={124} />
+        {/* SOURCE REGION — full-width label strip (clamped, so a long bilingual
+            label can never crowd or overflow the diagram), then a wide visual row:
+            compact sub-solar globe (left) + the large Sun→Earth diagram (right). */}
+        <div style={{ background: PAPER, border: `1px solid ${LINE}` }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, padding: '11px 20px 10px', borderBottom: `1px solid ${LINE}` }}>
+            <Eyebrow size={14} style={{ flex: 'none', paddingTop: 1 }}>{T.typeTag}</Eyebrow>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: INK, lineHeight: 1.18, textWrap: 'pretty',
+                display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden' }}>{content.regionLabel.en}</div>
+              {regMeta && content.regionLabel.reg && (
+                <div dir={regMeta.dir} style={{ fontSize: 17, color: MUT, fontFamily: regMeta.font, lineHeight: 1.4, marginTop: 3, textWrap: 'pretty',
+                  textAlign: regMeta.dir === 'rtl' ? 'right' : 'left', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden' }}>{content.regionLabel.reg}</div>
+              )}
             </div>
           </div>
-          <div style={{ flex: 1, background: PAPER, border: `1px solid ${LINE}`, padding: '11px 20px 8px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 14, borderBottom: `1px solid ${LINE}`, paddingBottom: 8, flex: 'none' }}>
-              <Eyebrow size={14}>{T.typeTag}</Eyebrow>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, textAlign: 'right' }}>
-                <span style={{ fontSize: 21, fontWeight: 700, color: INK, lineHeight: 1.05 }}>{content.regionLabel.en}</span>
-                {regMeta && content.regionLabel.reg && <span style={{ fontSize: 15, color: MUT, fontFamily: regMeta.font, whiteSpace: 'nowrap' }}>{content.regionLabel.reg}</span>}
+          <div style={{ display: 'flex', gap: 0, height: 214 }}>
+            <div style={{ flex: '0 0 226px', borderRight: `1px solid ${LINE}`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ padding: '10px 16px 0' }}>
+                <Eyebrow size={12.5}>{T.region}</Eyebrow>
+                <div style={{ fontSize: 16, fontWeight: 600, color: INK, marginTop: 3, fontVariantNumeric: 'tabular-nums' }}>{f.coordTxt}</div>
+              </div>
+              <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                <GlobeMini f={f} px={132} />
               </div>
             </div>
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ flex: 1, minWidth: 0, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <window.SolarDiagram regionType={content.regionType} lang={content.regionLang || 'en'} height="100%" />
             </div>
           </div>
@@ -244,15 +250,21 @@
         {/* sections + outlook in a 2×2 grid — flex:1 + minHeight:0 + overflow:hidden makes
             this the ONLY elastic block, so effects/disclaimer/footer below it are always
             in frame; per-field line-clamp truncates any single overlong field gracefully. */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px 36px', alignContent: 'start', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        {/* 3 text sections — the ONLY elastic block (flex:1 + overflow:hidden);
+            per-field clamp truncates gracefully. Impacts spans the bottom row. */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 36px', alignContent: 'start', flex: 1, minHeight: 0, overflow: 'hidden' }}>
           <Section n="01" labelEn={T.s1} labelReg={T.s1r} regMeta={regMeta}
             body={<Bilingual en={content.mechanism.en} reg={content.mechanism.reg} regMeta={regMeta} enSize={18} regSize={16} gap={5} clampEn={4} clampReg={3} />} />
           <Section n="02" labelEn={T.s3} labelReg={T.s3r} regMeta={regMeta}
             body={<Bilingual en={content.levelMeaning.en} reg={content.levelMeaning.reg} regMeta={regMeta} enSize={18} regSize={16} gap={5} clampEn={4} clampReg={3} />} />
-          <Section n="03" labelEn={T.s4} labelReg={T.s4r} regMeta={regMeta}
-            body={<Bilingual en={content.impacts.en} reg={content.impacts.reg} regMeta={regMeta} enSize={18} regSize={16} gap={5} clampEn={4} clampReg={3} />} />
-          <OutlookBanner content={content} regMeta={regMeta} T={T} compact />
+          <div style={{ gridColumn: '1 / -1' }}>
+            <Section n="03" labelEn={T.s4} labelReg={T.s4r} regMeta={regMeta}
+              body={<Bilingual en={content.impacts.en} reg={content.impacts.reg} regMeta={regMeta} enSize={18} regSize={16} gap={5} clampEn={2} clampReg={2} />} />
+          </div>
         </div>
+
+        {/* CME / aurora outlook — full width, always fully visible (never clipped) */}
+        <OutlookBanner content={content} regMeta={regMeta} T={T} compact />
 
         {/* effects */}
         <window.EffectChips effects={content.effects} lang={content.regionLang || 'en'} label={T.effects} />
