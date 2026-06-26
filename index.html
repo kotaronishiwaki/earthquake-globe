@@ -46,6 +46,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="quake-explain.css?v=20260625" />
 <link rel="stylesheet" href="volcano-explain.css?v=20260624" />
+<link rel="stylesheet" href="solar-explain.css?v=20260626" />
 <style>
   :root {
     --bg: #f1eee8;
@@ -57,6 +58,7 @@
     --quake: 207, 79, 46;
     --tsunami: 38, 110, 150;
     --volcano: 176, 116, 28;
+    --solar: 224, 158, 40;
     --ink: #2c2a27;
     --muted: #8c887f;
   }
@@ -185,6 +187,11 @@
   #volcano-toggle[aria-pressed="true"] .switch { background: rgb(var(--volcano)); }
   .sw-tri { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid rgb(var(--volcano)); flex: none; }
   .sw-dot { width: 10px; height: 10px; border-radius: 50%; background: rgb(var(--quake)); flex: none; }
+  #solar-toggle[aria-pressed="true"] .switch { background: rgb(var(--solar)); }
+  .sw-sun { width: 11px; height: 11px; border-radius: 50%; background: rgb(var(--solar)); flex: none; box-shadow: 0 0 0 2px rgba(224,158,40,.32); }
+  .scard .vtag { color: rgb(var(--solar)); }
+  .scard .vtag .ssun { width: 10px; height: 10px; border-radius: 50%; background: rgb(var(--solar)); box-shadow: 0 0 0 2px rgba(224,158,40,.3); flex: none; }
+  .scard .vname { font-variant-numeric: tabular-nums; }
   .vcard .vtag { display: flex; align-items: center; gap: 7px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: rgb(var(--volcano)); margin-bottom: 8px; }
   .vcard .vtag .vtri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 9px solid rgb(var(--volcano)); }
   .vcard .vname { font-size: 14px; font-weight: 600; line-height: 1.3; margin-bottom: 11px; padding-right: 14px; text-wrap: pretty; }
@@ -367,6 +374,11 @@
             <span class="sw-tri"></span>
             <span id="l-volcanoes">火山活動</span>
           </button>
+          <button class="switch-row" id="solar-toggle" aria-pressed="false">
+            <span class="switch"></span>
+            <span class="sw-sun"></span>
+            <span id="l-solar">太陽フレア</span>
+          </button>
         </div>
       </div>
       <div class="hint"><span class="dot"></span><span id="t-hint">震源をタップ／ドラッグで回転</span></div>
@@ -406,6 +418,20 @@
             <button class="ex-trigger" id="explain-v"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.2 1 2V17h6v-1.5c0-.8.4-1.4 1-2A6 6 0 0 0 12 3Z"></path><line x1="9.5" y1="21" x2="14.5" y2="21"></line></svg><span class="lk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V8a5 5 0 0 1 10 0"></path><rect x="4" y="11" width="16" height="9" rx="2"></rect></svg></span><span id="l-explain-v">解説</span></button>
           </div>
         </div>
+        <div class="card vcard scard" id="scard">
+          <button class="close" id="scard-close" aria-label="閉じる">×</button>
+          <div class="vtag"><span class="ssun"></span><span id="l-stag">太陽フレア</span></div>
+          <div class="vname" id="s-class">—</div>
+          <div class="valert"><span class="vdot" id="s-dot"></span><span class="vlevel" id="s-rscale">—</span></div>
+          <div class="rows">
+            <div><span class="k" id="l-sblackout">電波障害</span><span class="vv" id="s-blackout">—</span></div>
+            <div><span class="k" id="l-sregion">太陽直下点</span><span class="vv" id="s-region">—</span></div>
+            <div><span class="k" id="l-speak">ピーク</span><span class="vv" id="s-peak">—</span></div>
+          </div>
+          <div class="cardfoot">
+            <button class="ex-trigger" id="explain-s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.2 1 2V17h6v-1.5c0-.8.4-1.4 1-2A6 6 0 0 0 12 3Z"></path><line x1="9.5" y1="21" x2="14.5" y2="21"></line></svg><span class="lk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V8a5 5 0 0 1 10 0"></path><rect x="4" y="11" width="16" height="9" rx="2"></rect></svg></span><span id="l-explain-s">解説</span></button>
+          </div>
+        </div>
       </div>
 
       <div class="timeline" id="timeline">
@@ -440,6 +466,7 @@
   <script src="tz-local.js?v=20260625"></script>
   <script src="quake-explain.js?v=20260625"></script>
   <script src="volcano-explain.js?v=20260624b"></script>
+  <script src="solar-explain.js?v=20260626"></script>
   <script>
   (function () {
     // ---------- i18n ----------
@@ -502,6 +529,24 @@
       ar: { share:"مشاركة", copy:"نسخ الرابط", postX:"النشر على X", copied:"تم نسخ الرابط", smsg:"زلزال بقوة M%m · %p — خريطة الزلازل لآخر 7 أيام" },
       ja: { share:"共有", copy:"リンクをコピー", postX:"Xに投稿", copied:"リンクをコピーしました", smsg:"M%m の地震 · %p ｜過去7日間の地震マップ" },
     };
+    // solar-flare static labels + R-scale severity words (kept apart from TR so
+    // the existing six language blocks stay untouched)
+    const SOLT = {
+      en: { solar:"Solar flares", tag:"Solar flare", blackout:"Radio blackout", region:"Sub-solar point", peak:"Peak" },
+      zh: { solar:"太阳耀斑", tag:"太阳耀斑", blackout:"无线电中断", region:"太阳直射点", peak:"峰值" },
+      hi: { solar:"सौर ज्वालाएँ", tag:"सौर ज्वाला", blackout:"रेडियो ब्लैकआउट", region:"उप-सौर बिंदु", peak:"शिखर" },
+      es: { solar:"Erupciones solares", tag:"Erupción solar", blackout:"Apagón de radio", region:"Punto subsolar", peak:"Pico" },
+      ar: { solar:"التوهجات الشمسية", tag:"توهج شمسي", blackout:"انقطاع الراديو", region:"النقطة تحت الشمسية", peak:"الذروة" },
+      ja: { solar:"太陽フレア", tag:"太陽フレア", blackout:"電波障害", region:"太陽直下点", peak:"ピーク" },
+    };
+    const R_WORD = {
+      en: ['Minor','Moderate','Strong','Severe','Extreme'],
+      zh: ['轻微','中等','强','严重','极端'],
+      hi: ['मामूली','मध्यम','तीव्र','गंभीर','चरम'],
+      es: ['Menor','Moderado','Fuerte','Severo','Extremo'],
+      ar: ['طفيف','متوسط','قوي','شديد','بالغ'],
+      ja: ['軽微','中程度','強い','重大','極めて重大'],
+    };
     function detectLang() {
       try {
         const list = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language];
@@ -535,7 +580,7 @@
 
     const style = getComputedStyle(document.documentElement);
     const col = n => style.getPropertyValue(n).trim();
-    const COL = { land: col('--land'), hair: col('--hair'), ring: col('--ring'), ocean: col('--ocean'), whirl: col('--whirl'), quake: col('--quake'), tsunami: col('--tsunami'), volcano: col('--volcano') };
+    const COL = { land: col('--land'), hair: col('--hair'), ring: col('--ring'), ocean: col('--ocean'), whirl: col('--whirl'), quake: col('--quake'), tsunami: col('--tsunami'), volcano: col('--volcano'), solar: col('--solar') };
 
     const TILT = -18;
     const projection = d3.geoOrthographic().scale(R).translate([C, C]).clipAngle(90).rotate([0, -TILT, 0]);
@@ -553,6 +598,9 @@
     let vOn = false;
     try { vOn = localStorage.getItem('globe-volcanoes') === '1'; } catch (e) {}
     let volcanoes = [], selV = -1;
+    let sOn = false;
+    try { sOn = localStorage.getItem('globe-solar') === '1'; } catch (e) {}
+    let flares = [], selS = -1;
     let userPaused = false;
     try { userPaused = localStorage.getItem('globe-spin') === '0'; } catch (e) {}
 
@@ -718,6 +766,75 @@
       }
     }
 
+    // ---- solar flares ----
+    // A flare happens on the Sun, but its first effect on Earth is an HF radio
+    // blackout across the SUNLIT hemisphere, centred on the sub-solar point
+    // (where the Sun is overhead). Each flare is placed at the sub-solar point
+    // at its peak, with a soft "blackout footprint" disc sized by flare class.
+    function subsolarPoint(when) {
+      const d = (when instanceof Date) ? when : new Date(when);
+      const start = Date.UTC(d.getUTCFullYear(), 0, 0);
+      const N = (d - start) / 86400000;                 // day of year
+      const decl = -23.44 * Math.cos((2 * Math.PI / 365) * (N + 10));
+      const h = d.getUTCHours() + d.getUTCMinutes() / 60 + d.getUTCSeconds() / 3600;
+      let lon = -15 * (h - 12);
+      lon = ((lon + 540) % 360) - 180;
+      return [lon, decl];
+    }
+    const solarCircle = d3.geoCircle();
+    function flareRadiusDeg(lf) { return clamp(22 + (lf + 6) / 3 * 68, 16, 90); }  // lf = log10 peak flux
+    function drawSolar(tSec) {
+      if (!flares.length) return;
+      const rot = projection.rotate(), cen = [-rot[0], -rot[1]];
+      // footprints first (behind the glyphs)
+      for (let i = 0; i < flares.length; i++) {
+        const f = flares[i];
+        const dist = d3.geoDistance(f.coords, cen);
+        f._vis = dist < Math.PI / 2;
+        if (!f._vis) { f._sx = null; continue; }
+        const p = projection(f.coords); if (!p) { f._sx = null; continue; }
+        f._sx = p[0]; f._sy = p[1];
+        const edge = Math.min(1, (Math.PI / 2 - dist) / 0.32);
+        solarCircle.center(f.coords).radius(f.radiusDeg);
+        const outerR = Math.max(10, R * Math.sin(f.radiusDeg * Math.PI / 180));
+        ctx.save();
+        ctx.beginPath(); path(solarCircle()); ctx.clip();
+        const g = ctx.createRadialGradient(p[0], p[1], 2, p[0], p[1], outerR);
+        g.addColorStop(0, 'rgba(' + (f.rgb || COL.solar) + ',' + (0.30 * edge).toFixed(3) + ')');
+        g.addColorStop(1, 'rgba(' + (f.rgb || COL.solar) + ',0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(C, C, R, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      // sun glyphs on top
+      for (let i = 0; i < flares.length; i++) {
+        const f = flares[i];
+        if (!f._vis || f._sx == null) continue;
+        const dist = d3.geoDistance(f.coords, cen);
+        const edge = Math.min(1, (Math.PI / 2 - dist) / 0.32);
+        const rgb = f.rgb || COL.solar, x = f._sx, y = f._sy, rad = 5.2;
+        const ph = ((tSec / 3.0) + f.phase) % 1;
+        ctx.beginPath(); ctx.arc(x, y, 5 + ph * 9, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(' + rgb + ',' + ((1 - ph) * 0.18 * edge).toFixed(3) + ')'; ctx.fill();
+        ctx.strokeStyle = 'rgba(' + rgb + ',' + (0.9 * edge).toFixed(3) + ')'; ctx.lineWidth = 1.3;
+        for (let k = 0; k < 8; k++) {
+          const a = k * Math.PI / 4 + tSec * 0.25;
+          ctx.beginPath();
+          ctx.moveTo(x + Math.cos(a) * (rad + 1.6), y + Math.sin(a) * (rad + 1.6));
+          ctx.lineTo(x + Math.cos(a) * (rad + 4.2), y + Math.sin(a) * (rad + 4.2));
+          ctx.stroke();
+        }
+        ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(' + rgb + ',' + (0.96 * edge).toFixed(3) + ')'; ctx.fill();
+        ctx.beginPath(); ctx.arc(x, y, rad + 1, 0, Math.PI * 2);
+        ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(241,238,232,' + (0.7 * edge).toFixed(3) + ')'; ctx.stroke();
+        if (i === selS) {
+          ctx.beginPath(); ctx.arc(x, y, rad + 6 + 2 * (0.5 + 0.5 * Math.sin(tSec * 3.2)), 0, Math.PI * 2);
+          ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(' + rgb + ',0.9)'; ctx.stroke();
+        }
+      }
+    }
+
     function draw(rx, ry, phase, tSec) {
       projection.rotate([rx, ry, 0]).scale(R * zoom);
       ctx.clearRect(0, 0, SIZE, SIZE);
@@ -744,6 +861,7 @@
       drawWhirl(phase, true);
 
       ctx.save(); clipDisc();
+      if (sOn) drawSolar(tSec);
       if (vOn) drawVolcanoes(tSec);
       if (qOn) drawQuakes(tSec);
       ctx.restore();
@@ -875,9 +993,11 @@
     loadQuakes(false);
     loadTrends();
     loadVolcanoes();
+    loadFlares();
     setInterval(() => loadQuakes(true), 300000);  // auto-refresh every 5 minutes
     setInterval(loadTrends, 6 * 3600e3);          // refresh baselines every 6h (long sessions)
     setInterval(loadVolcanoes, 300000);           // refresh volcano activity every 5 minutes
+    setInterval(loadFlares, 300000);              // refresh solar flares every 5 minutes
 
     // ---- volcanic activity (three layers) ----
     // USGS Volcano Hazards Program (HANS): US volcanoes at an elevated alert level / aviation
@@ -932,6 +1052,60 @@
         volcanoes = list.map((v, idx) => { v.phase = (idx * 0.61803398875) % 1; return v; });
         if (selV >= 0) { renderVCard(); positionVCard(); }
       }).catch(() => {});
+    }
+
+    // ---- solar flares (NOAA SWPC / GOES X-ray) ----
+    // M- and X-class flares from the last 7 days. SWPC sends CORS headers so we
+    // fetch it directly; the Netlify proxy is a fallback. ?solardemo=1 seeds two
+    // sample flares when the feed is quiet (handy for testing the overlay).
+    function classToFlux(cls) {
+      if (!cls) return NaN;
+      const m = /^([ABCMX])([0-9.]+)?/i.exec(String(cls).trim());
+      if (!m) return NaN;
+      const base = { A: -8, B: -7, C: -6, M: -5, X: -4 }[m[1].toUpperCase()];
+      const num = m[2] ? parseFloat(m[2]) : 1;
+      return num * Math.pow(10, base);
+    }
+    function loadFlares() {
+      const DIRECT = 'https://services.swpc.noaa.gov/json/goes/primary/xray-flares-7-day.json';
+      const PROXY = '/.netlify/functions/swpc-flares';
+      const demo = /[?&]solardemo=1/.test(location.search);
+      fetch(DIRECT).then(r => r.json()).catch(() => fetch(PROXY).then(r => r.json()))
+        .then(rows => buildFlares(Array.isArray(rows) ? rows : [], demo))
+        .catch(() => buildFlares([], demo));
+    }
+    function mkFlare(cls, flux, peak) {
+      const coords = subsolarPoint(peak);
+      return {
+        id: 'fl-' + peak, class: cls, flux: flux,
+        rScale: window.SolarExplain ? window.SolarExplain.rScaleOf(flux) : 0,
+        peak: peak, begin: peak, end: null,
+        coords: coords, lat: coords[1], lon: coords[0],
+        radiusDeg: flareRadiusDeg(Math.log10(flux)), rgb: COL.solar,
+        report: 'https://www.swpc.noaa.gov/products/solar-and-geophysical-event-reports',
+      };
+    }
+    function buildFlares(rows, demo) {
+      const seen = {}, list = [];
+      rows.forEach(e => {
+        const cls = e.max_class || e.current_class || e.begin_class;
+        const flux = Number.isFinite(e.max_xrlong) ? e.max_xrlong : classToFlux(cls);
+        if (!Number.isFinite(flux) || flux < 1e-5) return;     // M-class and above only
+        const peak = e.max_time || e.time_tag || e.begin_time;
+        if (!peak) return;
+        const id = 'fl-' + peak;
+        if (seen[id]) return; seen[id] = 1;
+        const f = mkFlare(cls, flux, peak);
+        f.begin = e.begin_time || peak; f.end = e.end_time || null;
+        list.push(f);
+      });
+      if (!list.length && demo) {
+        list.push(mkFlare('X2.3', 2.3e-4, new Date(Date.now() - 2 * 3600e3).toISOString()));
+        list.push(mkFlare('M1.6', 1.6e-5, new Date(Date.now() - 20 * 3600e3).toISOString()));
+      }
+      list.sort((a, b) => Date.parse(a.peak) - Date.parse(b.peak));
+      flares = list.map((f, idx) => { f.phase = (idx * 0.61803398875) % 1; return f; });
+      if (selS >= 0) { renderSCard(); positionSCard(); }
     }
 
     // ---------- text ----------
@@ -1088,6 +1262,15 @@
       if (window.VolcanoExplain) $('l-explain-v').textContent = window.VolcanoExplain.buttonLabel(lang);
       if (selV >= 0) renderVCard();
       $('vcard-close').setAttribute('aria-label', T.close);
+      const SO = SOLT[lang] || SOLT.en;
+      $('l-solar').textContent = SO.solar;
+      $('l-stag').textContent = SO.tag;
+      $('l-sblackout').textContent = SO.blackout;
+      $('l-sregion').textContent = SO.region;
+      $('l-speak').textContent = SO.peak;
+      if (window.SolarExplain) $('l-explain-s').textContent = window.SolarExplain.buttonLabel(lang);
+      $('scard-close').setAttribute('aria-label', T.close);
+      if (selS >= 0) renderSCard();
       syncSpin();
       $('l-mag').textContent = T.mag;
       $('l-depth').textContent = T.depth;
@@ -1190,6 +1373,43 @@
     function showVCard(i) { selV = i; renderVCard(); positionVCard(); vcard.classList.add('show'); }
     function hideVCard() { vcard.classList.remove('show'); }
 
+    const scard = $('scard');
+    function solCoord(lat, lon) {
+      return Math.abs(lat).toFixed(0) + '°' + (lat >= 0 ? 'N' : 'S') + ' ' + Math.abs(lon).toFixed(0) + '°' + (lon >= 0 ? 'E' : 'W');
+    }
+    function renderSCard() {
+      if (selS < 0 || !flares[selS]) return;
+      const f = flares[selS];
+      const r = f.rScale || (window.SolarExplain ? window.SolarExplain.rScaleOf(f.flux) : 0);
+      const word = r ? ((R_WORD[lang] || R_WORD.en)[r - 1] || '') : '';
+      $('s-class').textContent = f.class || '—';
+      $('s-dot').style.background = 'rgb(' + (f.rgb || COL.solar) + ')';
+      $('s-rscale').textContent = r ? ('R' + r + (word ? ' · ' + word : '')) : '—';
+      const sb = $('s-blackout');
+      sb.textContent = r ? ('R' + r) : '—';
+      sb.style.color = 'rgb(' + (f.rgb || COL.solar) + ')';
+      $('s-region').textContent = solCoord(f.lat, f.lon);
+      $('s-peak').textContent = f.peak ? fmtTime(Date.parse(f.peak)) : '—';
+      if (window.SolarExplain) {
+        $('l-explain-s').textContent = window.SolarExplain.buttonLabel(lang);
+        $('explain-s').classList.toggle('locked', window.SolarExplain.isLocked());
+      }
+    }
+    function positionSCard() {
+      const f = flares[selS]; if (!f) return;
+      const dispW = canvas.clientWidth || SIZE, dispH = canvas.clientHeight || SIZE;
+      const s = dispW / SIZE;
+      const cw = scard.offsetWidth || 200, chh = scard.offsetHeight || 120;
+      const px = (f._sx != null ? f._sx : C) * s, py = (f._sy != null ? f._sy : C) * s;
+      let left = px + 16, top = py - 20;
+      if (left + cw > dispW) left = px - cw - 16;
+      left = Math.max(0, Math.min(left, dispW - cw));
+      top = Math.max(0, Math.min(top, dispH - chh));
+      scard.style.left = left + 'px'; scard.style.top = top + 'px';
+    }
+    function showSCard(i) { selS = i; renderSCard(); positionSCard(); scard.classList.add('show'); }
+    function hideSCard() { scard.classList.remove('show'); }
+
     function pick(mx, my) {
       if (!qOn) return -1;
       const rot = projection.rotate(), cen = [-rot[0], -rot[1]];
@@ -1213,6 +1433,17 @@
         if (v._sx == null) continue;
         const d = Math.hypot(v._sx - mx, v._sy - my);
         if (d < 13 && d < bd) { bd = d; best = i; }
+      }
+      return best;
+    }
+    function pickFlare(mx, my) {
+      if (!sOn) return -1;
+      let best = -1, bd = 1e9;
+      for (let i = 0; i < flares.length; i++) {
+        const f = flares[i];
+        if (f._sx == null) continue;
+        const d = Math.hypot(f._sx - mx, f._sy - my);
+        if (d < 14 && d < bd) { bd = d; best = i; }
       }
       return best;
     }
@@ -1240,7 +1471,7 @@
     });
     canvas.addEventListener('pointermove', e => {
       if (!ptrs.has(e.pointerId)) {
-        if (ptrs.size === 0) { const [mx, my] = toLocal(e); canvas.style.cursor = (pick(mx, my) >= 0 || pickVolcano(mx, my) >= 0) ? 'pointer' : 'grab'; }
+        if (ptrs.size === 0) { const [mx, my] = toLocal(e); canvas.style.cursor = (pick(mx, my) >= 0 || pickVolcano(mx, my) >= 0 || pickFlare(mx, my) >= 0) ? 'pointer' : 'grab'; }
         return;
       }
       ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1255,6 +1486,7 @@
         dragging = true; paused = true;
         if (selected >= 0) { selected = -1; hideCard(); }
         if (selV >= 0) { selV = -1; hideVCard(); }
+        if (selS >= 0) { selS = -1; hideSCard(); }
       }
       if (dragging) {
         const k = 0.34 / zoom;
@@ -1274,11 +1506,15 @@
           dragging = false;
         } else {
           const [mx, my] = toLocal(e); const i = pick(mx, my);
-          if (i >= 0) { selV = -1; hideVCard(); paused = true; showCard(i); }
+          if (i >= 0) { selV = -1; hideVCard(); selS = -1; hideSCard(); paused = true; showCard(i); }
           else {
             const vi = pickVolcano(mx, my);
-            if (vi >= 0) { selected = -1; hideCard(); paused = true; showVCard(vi); }
-            else { selected = -1; selV = -1; paused = false; hideCard(); hideVCard(); }
+            if (vi >= 0) { selected = -1; hideCard(); selS = -1; hideSCard(); paused = true; showVCard(vi); }
+            else {
+              const si = pickFlare(mx, my);
+              if (si >= 0) { selected = -1; hideCard(); selV = -1; hideVCard(); paused = true; showSCard(si); }
+              else { selected = -1; selV = -1; selS = -1; paused = false; hideCard(); hideVCard(); hideSCard(); }
+            }
           }
         }
       } else if (ptrs.size === 1) {
@@ -1331,6 +1567,20 @@
         $('explain-v').classList.toggle('locked', locked);
       });
     }
+    if (window.SolarExplain && window.SolarExplain.onStateChange) {
+      window.SolarExplain.onStateChange(locked => { $('explain-s').classList.toggle('locked', locked); });
+    }
+    $('explain-s').addEventListener('click', e => {
+      e.stopPropagation();
+      if (selS < 0 || !flares[selS] || !window.SolarExplain) return;
+      const f = flares[selS];
+      window.SolarExplain.open({
+        id: f.id, class: f.class, flux: f.flux, rScale: f.rScale,
+        peak: f.peak, begin: f.begin, end: f.end,
+        lat: f.lat, lon: f.lon, rgb: f.rgb, report: f.report,
+      }, lang);
+      $('explain-s').classList.toggle('locked', window.SolarExplain.isLocked());
+    });
     $('latest').addEventListener('click', () => { const i = curIdx(); if (i >= 0) flyTo(quakes[i].coords, i); });
     $('lat-prev').addEventListener('click', () => browseStep(-1));
     $('lat-next').addEventListener('click', () => browseStep(1));
@@ -1424,6 +1674,17 @@
     syncVToggle();
     $('vcard-close').addEventListener('click', () => { selV = -1; paused = false; hideVCard(); });
 
+    const sToggle = $('solar-toggle');
+    function syncSToggle() { sToggle.setAttribute('aria-pressed', sOn ? 'true' : 'false'); }
+    sToggle.addEventListener('click', () => {
+      sOn = !sOn;
+      try { localStorage.setItem('globe-solar', sOn ? '1' : '0'); } catch (e) {}
+      if (!sOn && selS >= 0) { selS = -1; paused = false; hideSCard(); }
+      syncSToggle();
+    });
+    syncSToggle();
+    $('scard-close').addEventListener('click', () => { selS = -1; paused = false; hideSCard(); });
+
     // ---------- rotation pause/resume ----------
     const spinBtn = $('spin-toggle');
     function syncSpin() {
@@ -1460,6 +1721,7 @@
       renderStats(); renderLatest();
       if (selected >= 0) { renderCard(); positionCard(); }
       if (selV >= 0) { renderVCard(); positionVCard(); }
+      if (selS >= 0) { renderSCard(); positionSCard(); }
       [...document.querySelectorAll('.pill')].forEach(p => p.classList.toggle('active', p.dataset.code === code));
     }
     const bar = $('langbar');
@@ -1472,6 +1734,9 @@
 
     setInterval(() => { renderLatest(); if (selected >= 0) $('c-ago').textContent = agoText(quakes[selected].time); }, 30000);
     setLang(lang);
+
+    // dev hook — seed/inspect the solar layer without the ?solardemo flag
+    window.__globeSolar = { seed: () => buildFlares([], true), flares: () => flares, count: () => flares.length, sel: i => showSCard(i) };
   })();
   </script>
   <!-- Cloudflare Web Analytics -->
