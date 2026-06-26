@@ -118,6 +118,8 @@
   .latest .lv #lat-ago { font-size: 11px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
   .latest .lp { font-size: 10.5px; line-height: 1.3; color: var(--ink); margin-top: 4px; text-wrap: pretty; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .latest.browsing .pdot { animation: none; opacity: .3; }
+  .latest .lhint { display: none; align-items: center; gap: 5px; margin-top: 7px; font-size: 10px; font-weight: 600; letter-spacing: .03em; color: rgb(var(--quake)); }
+  .latest .lhint svg { width: 11px; height: 11px; flex: none; }
 
   .latest-wrap { margin: 0 0 16px; }
   .latest-nav { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 5px; }
@@ -256,16 +258,42 @@
   /* ---- mobile ---- */
   @media (max-width: 720px) {
     body { --globe: min(92vw, 440px); align-items: stretch; padding: 18px 14px 26px; }
-    .app { flex-direction: column; align-items: center; gap: 18px; width: 100%; }
-    /* drop the stats panel below the fixed coffee pill so the share button clears it */
-    .stats { width: var(--globe); padding-top: 0; margin-top: 36px; }
-    .metrics { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 16px 26px; }
+
+    /* Dissolve the two columns into ONE ordered stack so the globe can sit at
+       the top as the hero, with the LATEST card pinned directly beneath it —
+       making "tap LATEST → that epicenter shows on the globe" spatially obvious.
+       display:contents lifts every grandchild into .app's flex flow, so no DOM
+       is moved and the canvas is untouched. */
+    .app { flex-direction: column; align-items: center; gap: 15px; width: 100%; }
+    .stats, .main { display: contents; }
+
+    .shead, .stats > .sub, .latest-wrap, .metrics, .hint,
+    .stage, .timeline, .langbar { width: var(--globe); }
+
+    .shead       { order: 1; margin-top: 34px; }   /* clear the fixed coffee pill */
+    .stats > .sub { order: 1; margin-top: -8px; }
+    .stage       { order: 2; }
+    .latest-wrap { order: 3; margin: 0; }
+    .hint        { order: 4; margin-top: 0; }
+    .timeline    { order: 5; margin-top: 2px; }
+    .metrics     { order: 6; display: flex; align-items: flex-start; flex-wrap: wrap; gap: 16px 26px; }
+    .langbar     { order: 7; }
+    .morelinks   { order: 8; }
+
     .metrics .stat { margin-bottom: 0; }
     .metrics .filter { margin-top: 0; }
-    .main { width: var(--globe); align-items: center; }
-    .timeline { margin-top: 16px; }
-    .hint { margin-top: 12px; }
     [dir="rtl"] .metrics { flex-direction: row-reverse; }
+
+    /* connector: a notch on the card's top edge + an instruction line make the
+       link between the card and the globe directly above it unmistakable */
+    .latest-wrap { position: relative; }
+    .latest-wrap::before {
+      content: ""; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 8px solid transparent; border-right: 8px solid transparent;
+      border-bottom: 9px solid rgb(var(--quake));
+    }
+    .latest .lhint { display: flex; }
 
     /* keep the support button always visible — pin to top-right on phones */
     .coffee {
@@ -296,6 +324,7 @@
           <div class="lk"><span class="pdot"></span><span id="l-latest">最新</span></div>
           <div class="lv"><b id="lat-mag">—</b><span class="lsep">·</span><span id="lat-ago">—</span></div>
           <div class="lp" id="lat-place">—</div>
+          <div class="lhint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg><span id="l-lhint">タップで地球儀に表示</span></div>
         </button>
         <div class="latest-nav">
           <button class="lnav" id="lat-prev" type="button" aria-label="前の地震"><svg class="lnav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
@@ -305,7 +334,7 @@
       </div>
       <div class="metrics">
         <div class="stat"><div class="k" id="l-count">件数</div><div class="v" id="s-count" style="font-size: 23px">—</div></div>
-        <div class="stat"><div class="k" id="l-max">最大マグニチュード</div><div class="v" id="s-max" style="font-size: 6px">—</div></div>
+        <div class="stat"><div class="k" id="l-max">最大マグニチュード</div><div class="v" id="s-max" style="font-size: 23px">—</div></div>
         <div class="trend" id="trend">
           <div class="k" id="l-trend">前期間との比較</div>
           <div class="tsrc">EMSC · M4.5+</div>
@@ -419,7 +448,7 @@
         title:"Earthquakes · past 7 days", count:"Total events", max:"Largest magnitude",
         hint:"Tap a point · drag to rotate", mag:"Magnitude", depth:"Depth", when:"When",
         mmi:"Shaking (MMI)", datetime:"Date & time", close:"Close", unit:"", tsunami:"Tsunami possible",
-        latest:"Latest", filter:"Show magnitude", live:"Live", play:"Play", pause:"Pause",
+        latest:"Latest", lhint:"Tap to show on globe", filter:"Show magnitude", live:"Live", play:"Play", pause:"Pause",
         min:"%n min ago", hour:"%n hr ago", day:"%n days ago", fresh1:"%n new earthquake", freshN:"%n new earthquakes",
         trend:"vs. same 7 days", tWeek:"Last week", tMonth:"A month ago", tYear:"A year ago",
         overlay:"Overlay", plates:"Plate boundaries", rotPause:"Pause rotation", rotPlay:"Resume rotation", volcanoes:"Active volcanoes", quakesL:"Seismic activity", vTag:"Volcano", vColor:"Aviation color", vObs:"Observatory", vLast:"Last notice", vReport:"Volcano notice", vLastE:"Last reported", vReportE:"Smithsonian report", vLvl:"Level", vKind:"Warning", vReportJ:"JMA bulletin" },
@@ -427,7 +456,7 @@
         title:"过去 7 天的地震", count:"地震次数", max:"最大震级",
         hint:"点按震源 · 拖动旋转", mag:"震级", depth:"深度", when:"发生",
         mmi:"震动 (MMI)", datetime:"日期时间", close:"关闭", unit:"次", tsunami:"可能引发海啸",
-        latest:"最新", filter:"显示震级", live:"实时", play:"播放", pause:"暂停",
+        latest:"最新", lhint:"点按可在地球上显示", filter:"显示震级", live:"实时", play:"播放", pause:"暂停",
         min:"%n 分钟前", hour:"%n 小时前", day:"%n 天前", fresh1:"新增 %n 次地震", freshN:"新增 %n 次地震",
         trend:"与同期 7 天相比", tWeek:"上周", tMonth:"一个月前", tYear:"一年前",
         overlay:"图层", plates:"板块边界", rotPause:"暂停旋转", rotPlay:"继续旋转", volcanoes:"活火山", quakesL:"地震活动", vTag:"火山", vColor:"航空颜色代码", vObs:"观测站", vLast:"最近通知", vReport:"火山通报", vLastE:"最后报告", vReportE:"史密森报告", vLvl:"等级", vKind:"警报种类", vReportJ:"气象厅信息" },
@@ -435,7 +464,7 @@
         title:"पिछले 7 दिनों के भूकंप", count:"कुल भूकंप", max:"अधिकतम तीव्रता",
         hint:"केंद्र पर टैप करें · घुमाने के लिए खींचें", mag:"तीव्रता", depth:"गहराई", when:"कब",
         mmi:"कंपन (MMI)", datetime:"दिनांक व समय", close:"बंद करें", unit:"", tsunami:"सुनामी संभव",
-        latest:"नवीनतम", filter:"तीव्रता दिखाएँ", live:"लाइव", play:"चलाएँ", pause:"रोकें",
+        latest:"नवीनतम", lhint:"ग्लोब पर दिखाने के लिए टैप करें", filter:"तीव्रता दिखाएँ", live:"लाइव", play:"चलाएँ", pause:"रोकें",
         min:"%n मिनट पहले", hour:"%n घंटे पहले", day:"%n दिन पहले", fresh1:"%n नया भूकंप", freshN:"%n नए भूकंप",
         trend:"समान 7 दिन से", tWeek:"पिछला सप्ताह", tMonth:"एक माह पहले", tYear:"एक वर्ष पहले",
         overlay:"ओवरले", plates:"प्लेट सीमाएँ", rotPause:"घूर्णन रोकें", rotPlay:"घूर्णन जारी रखें", volcanoes:"सक्रिय ज्वालामुखी", quakesL:"भूकंप गतिविधि", vTag:"ज्वालामुखी", vColor:"विमानन रंग कोड", vObs:"वेधशाला", vLast:"अंतिम सूचना", vReport:"ज्वालामुखी सूचना", vLastE:"अंतिम रिपोर्ट", vReportE:"स्मिथसोनियन रिपोर्ट", vLvl:"स्तर", vKind:"चेतावनी", vReportJ:"JMA सूचना" },
@@ -443,7 +472,7 @@
         title:"Sismos · últimos 7 días", count:"Eventos totales", max:"Magnitud máxima",
         hint:"Toca un punto · arrastra para girar", mag:"Magnitud", depth:"Profundidad", when:"Cuándo",
         mmi:"Sacudida (MMI)", datetime:"Fecha y hora", close:"Cerrar", unit:"", tsunami:"Posible tsunami",
-        latest:"Más reciente", filter:"Mostrar magnitud", live:"En vivo", play:"Reproducir", pause:"Pausar",
+        latest:"Más reciente", lhint:"Toca para verlo en el globo", filter:"Mostrar magnitud", live:"En vivo", play:"Reproducir", pause:"Pausar",
         min:"hace %n min", hour:"hace %n h", day:"hace %n días", fresh1:"%n sismo nuevo", freshN:"%n sismos nuevos",
         trend:"vs. mismos 7 días", tWeek:"Semana pasada", tMonth:"Hace un mes", tYear:"Hace un año",
         overlay:"Capa", plates:"Límites de placas", rotPause:"Pausar rotación", rotPlay:"Reanudar rotación", volcanoes:"Volcanes activos", quakesL:"Actividad sísmica", vTag:"Volcán", vColor:"Color de aviación", vObs:"Observatorio", vLast:"Último aviso", vReport:"Aviso volcánico", vLastE:"Último informe", vReportE:"Informe Smithsonian", vLvl:"Nivel", vKind:"Aviso", vReportJ:"Boletín JMA" },
@@ -451,7 +480,7 @@
         title:"الزلازل · آخر 7 أيام", count:"إجمالي الزلازل", max:"أكبر قوة",
         hint:"انقر على نقطة · اسحب للتدوير", mag:"القوة", depth:"العمق", when:"متى",
         mmi:"الاهتزاز (MMI)", datetime:"التاريخ والوقت", close:"إغلاق", unit:"", tsunami:"احتمال تسونامي",
-        latest:"الأحدث", filter:"إظهار القوة", live:"مباشر", play:"تشغيل", pause:"إيقاف",
+        latest:"الأحدث", lhint:"انقر لعرضه على الكرة الأرضية", filter:"إظهار القوة", live:"مباشر", play:"تشغيل", pause:"إيقاف",
         min:"منذ %n دقيقة", hour:"منذ %n ساعة", day:"منذ %n يوم", fresh1:"%n زلزال جديد", freshN:"%n زلازل جديدة",
         trend:"مقارنة بـ 7 أيام", tWeek:"الأسبوع الماضي", tMonth:"قبل شهر", tYear:"قبل سنة",
         overlay:"الطبقة", plates:"حدود الصفائح", rotPause:"إيقاف الدوران", rotPlay:"استئناف الدوران", volcanoes:"البراكين النشطة", quakesL:"النشاط الزلزالي", vTag:"بركان", vColor:"رمز اللون", vObs:"المرصد", vLast:"آخر إشعار", vReport:"إشعار بركاني", vLastE:"آخر تقرير", vReportE:"تقرير سميثسونيان", vLvl:"المستوى", vKind:"تحذير", vReportJ:"نشرة JMA" },
@@ -459,7 +488,7 @@
         title:"過去7日間の地震", count:"件数", max:"最大マグニチュード",
         hint:"震源をタップ · ドラッグで回転", mag:"マグニチュード", depth:"深さ", when:"発生",
         mmi:"揺れ(MMI)", datetime:"日時", close:"閉じる", unit:"件", tsunami:"津波の可能性",
-        latest:"最新", filter:"表示マグニチュード", live:"ライブ", play:"再生", pause:"一時停止",
+        latest:"最新", lhint:"タップで地球儀に表示", filter:"表示マグニチュード", live:"ライブ", play:"再生", pause:"一時停止",
         min:"%n分前", hour:"%n時間前", day:"%n日前", fresh1:"新しい地震が %n 件", freshN:"新しい地震が %n 件",
         trend:"同じ 7 日間との比較", tWeek:"先週", tMonth:"1か月前", tYear:"1年前",
         overlay:"オーバーレイ", plates:"プレート境界", rotPause:"回転を一時停止", rotPlay:"回転を再開", volcanoes:"火山活動", quakesL:"地震活動", vTag:"火山", vColor:"航空カラーコード", vObs:"観測所", vLast:"最終通知", vReport:"火山速報", vLastE:"最終報告", vReportE:"スミソニアンの報告", vLvl:"レベル", vKind:"警報種別", vReportJ:"気象庁の情報" },
@@ -1046,6 +1075,7 @@
       $('tlbl-year').textContent = T.tYear;
       $('t-hint').textContent = T.hint;
       $('l-latest').textContent = T.latest;
+      if ($('l-lhint') && T.lhint) $('l-lhint').textContent = T.lhint;
       $('l-filter').textContent = T.filter;
       $('l-plates-k').textContent = T.overlay;
       $('l-plates').textContent = T.plates;
