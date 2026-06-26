@@ -1,0 +1,64 @@
+# Move this file to .github/workflows/solar-post.yml in your repository,
+# then add the same secrets used by the quake / volcano poster.
+name: Globe solar-flare auto-poster
+
+on:
+  schedule:
+    - cron: '17,47 * * * *'   # twice an hour, offset from the quake (:0/:15…) and volcano (:07/:37) jobs
+  workflow_dispatch:           # manual "Run workflow" button
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: true
+        default: 'once'
+        type: choice
+        options:
+          - once     # normal: post only new flares ≥ threshold (default)
+          - test     # post the single strongest recent flare NOW (verify posting works)
+          - dry      # render cards to out/, post nothing
+          - seed     # record current flares without posting
+
+permissions:
+  contents: write              # to commit posted-flares.json
+
+concurrency:
+  group: globe-solar-autopost
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install deps
+        working-directory: auto-poster
+        run: npm install
+      - name: Install Chromium
+        working-directory: auto-poster
+        run: npx playwright install --with-deps chromium
+      - name: Run
+        working-directory: auto-poster
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: claude-haiku-4-5
+          BLUESKY_IDENTIFIER: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          MASTODON_INSTANCE: ${{ secrets.MASTODON_BASE_URL }}
+          MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
+          POST_BLUESKY: '1'
+          POST_MASTODON: '1'
+          MIN_FLARE_CLASS: 'M5'      # post M5 and above; set to 'X1' for X-class only
+          SOLAR_REG_LANG: 'ja'       # bilingual EN + Japanese; set 'none' for English-only
+          MAX_AGE_HOURS: '48'
+        # schedule runs default to --once; the manual button uses the chosen mode
+        run: node solar-poster.mjs --${{ github.event.inputs.mode || 'once' }}
+      - name: Persist posted-flares.json
+        run: |
+          git config user.name "globe-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add auto-poster/posted-flares.json || true
+          git commit -m "state: update posted flares [skip ci]" || echo "no changes"
+          git push || echo "nothing to push"

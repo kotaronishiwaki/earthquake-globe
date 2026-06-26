@@ -11,7 +11,11 @@
     "volcano": "node volcano-poster.mjs",
     "volcano:once": "node volcano-poster.mjs --once",
     "volcano:dry": "node volcano-poster.mjs --dry",
-    "volcano:test": "node volcano-poster.mjs --test"
+    "volcano:test": "node volcano-poster.mjs --test",
+    "solar": "node solar-poster.mjs",
+    "solar:once": "node solar-poster.mjs --once",
+    "solar:dry": "node solar-poster.mjs --dry",
+    "solar:test": "node solar-poster.mjs --test"
   },
   "dependencies": {
     "@atproto/api": "^0.13.18",
