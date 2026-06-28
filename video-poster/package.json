@@ -1,0 +1,23 @@
+{
+  "name": "globe-weekly-video",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Globe Weekly — automated weekly earthquake/volcano/solar-flare video program (YouTube + Shorts + TikTok).",
+  "scripts": {
+    "aggregate": "node aggregate.mjs",
+    "script": "node --env-file=.env script.mjs",
+    "tts": "node --env-file=.env tts.mjs",
+    "record": "node record.mjs",
+    "compose": "node compose.mjs",
+    "build": "node --env-file=.env run.mjs",
+    "build:dry": "node --env-file=.env run.mjs --dry",
+    "upload": "node --env-file=.env upload.mjs"
+  },
+  "dependencies": {
+    "googleapis": "^144.0.0",
+    "playwright": "^1.48.0",
+    "ws": "^8.18.0"
+  },
+  "engines": { "node": ">=20" }
+}
