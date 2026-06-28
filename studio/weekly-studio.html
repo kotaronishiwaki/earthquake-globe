@@ -1,1 +1,512 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Globe Weekly — 週次番組スタジオ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="studio.css" />
+</head>
+<body>
+  <!-- Sync marker: in record mode the studio holds a flat-white full-screen frame
+       from load until play() fires. compose.mjs detects where this white region
+       ends (negate → blackdetect) to find the exact play()-start in the recorded
+       webm — robust to Playwright recorder spin-up, which a wall-clock estimate is
+       not. Hidden outside render mode; all marker frames are trimmed off the head. -->
+  <div id="syncmark" style="position:fixed;inset:0;background:#fff;z-index:2147483647;display:none"></div>
+  <div class="viewport">
+    <div class="stage" id="stage">
 
+      <div class="topbar">
+        <div class="brand">
+          <div class="mark">GL<span class="o">O</span>BE WEEKLY</div>
+          <div class="sub" id="brandSub">地震・火山・太陽フレア</div>
+        </div>
+        <div class="week" id="weekLabel"></div>
+      </div>
+
+      <div class="segdots" id="segdots"></div>
+
+      <div class="main">
+        <div class="globe-col">
+          <div class="globe-wrap">
+            <canvas id="globe"></canvas>
+            <div class="globe-cap" id="globeCap">USGS · JMA · NOAA SWPC</div>
+          </div>
+        </div>
+        <div class="panel" id="panel"></div>
+      </div>
+
+      <div class="lowerthird" id="lowerthird">
+        <div class="chip"><span class="sw"></span><span class="nm" id="ltName"></span></div>
+        <span class="ro" id="ltRole"></span>
+      </div>
+
+      <div class="captionband">
+        <div class="cap swapcap" id="caption"></div>
+      </div>
+
+      <div class="titlecard" id="titlecard">
+        <div class="tc-eyebrow"><span class="tag"></span><span id="tcEyebrow"></span></div>
+        <div class="tc-title" id="tcTitle"></div>
+        <div class="tc-sub" id="tcSub"></div>
+      </div>
+
+      <div class="disccard" id="disccard">
+        <div class="dc-mark">GL<span class="o">O</span>BE WEEKLY</div>
+        <div class="dc-eyebrow" id="dcEyebrow"></div>
+        <div class="dc-body" id="dcBody"></div>
+        <div class="dc-src">USGS · JMA · NOAA SWPC</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="controls" id="controls">
+    <button id="playBtn" class="primary">▶ 再生</button>
+    <button id="restartBtn">⟲</button>
+    <input type="range" class="scrub" id="scrub" min="0" max="1000" value="0" />
+    <span class="time" id="time">0:00 / 0:00</span>
+    <span class="seg-now" id="segNow"></span>
+    <button id="voiceBtn" class="langbtn active">🔊 音声</button>
+    <button id="langJa" class="langbtn active">日本語</button>
+    <button id="langEn" class="langbtn">EN</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+  <script src="globe.js"></script>
+  <script src="weekly-script.js"></script>
+  <script src="mechanisms.js"></script>
+  <script>
+  (function () {
+    // PROGRAM source: an injected window.__PROGRAM (used by the recording pipeline)
+    // takes priority over the bundled sample script.
+    const P = window.__PROGRAM || window.WEEKLY;
+    const params = new URLSearchParams(location.search);
+    const renderMode = params.get('mode') === 'render';
+    if (renderMode) document.body.classList.add('render-mode');
+    // Sync marker: hold a flat-white frame from load until play() so compose.mjs
+    // can anchor the audio/video head exactly (see the #syncmark comment in <body>).
+    const syncmark = document.getElementById('syncmark');
+    if (renderMode && syncmark) syncmark.style.display = 'block';
+    let lang = (params.get('lang') === 'en') ? 'en' : 'ja';
+
+    // ---- scale stage to viewport ----
+    const stage = document.getElementById('stage');
+    function fit() {
+      const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      stage.style.transform = 'scale(' + s + ')';
+    }
+    window.addEventListener('resize', fit); fit();
+
+    // ---- globe ----
+    const globe = new window.GlobeWeekly(document.getElementById('globe'), { size: 760 });
+    if (renderMode) globe.spin = false;   // hold position after flyTo in render/record mode
+    const allEvents = [
+      ...P.events.quakes.map(q => ({ coords: q.coords, mag: q.mag, kind: 'quake', tsunami: q.tsunami })),
+      ...P.events.volcanoes.map(v => ({ coords: v.coords, kind: 'volcano' })),
+      ...P.events.flares.map(f => ({ coords: f.coords, kind: 'flare' })),
+    ];
+    globe.setEvents(allEvents);
+    function evIndex(kind, ix) {
+      if (kind === 'quake') return ix;
+      if (kind === 'volcano') return P.events.quakes.length + ix;
+      if (kind === 'flare') return P.events.quakes.length + P.events.volcanoes.length + ix;
+      return -1;
+    }
+
+    // ---- duration estimate from caption text ----
+    function estDur(txt, lng) {
+      const n = (txt || '').length;
+      const cps = lng === 'ja' ? 6.4 : 15.5;
+      return Math.max(2.4, Math.min(9, n / cps + 0.75));
+    }
+
+    // ---- build timeline ----
+    // Title-card hold MUST equal compose.mjs's TITLE_DUR or the recorded video
+    // drifts from the muxed audio + SRT. record.mjs injects window.__TITLE_DUR
+    // from config.mjs; the literal is only a fallback for manual/preview opens.
+    const TITLE_DUR = (typeof window !== 'undefined' && Number(window.__TITLE_DUR)) || 2.6;
+    const DISC_DUR = (typeof window !== 'undefined' && Number(window.__DISC_DUR)) || 7;
+    let TL = null;
+    function buildTimeline() {
+      const cues = []; let t = 0;
+      const segRange = [];
+      // Opening disclaimer card (if the program carries disclaimer text).
+      if (P.disclaimer) { cues.push({ t: 0, dur: DISC_DUR, type: 'disclaimer' }); t += DISC_DUR; }
+      P.segments.forEach((seg, si) => {
+        const segStart = t;
+        if (seg.titleCard) { cues.push({ t, dur: TITLE_DUR, type: 'title', si, seg }); t += TITLE_DUR; }
+        let panel = seg.panel;
+        seg.lines.forEach((ln, li) => {
+          if (ln.panel) panel = ln.panel;
+          const txt = lang === 'ja' ? ln.ja : ln.en;
+          const dur = ln.dur || estDur(txt, lang);
+          cues.push({ t, dur, type: 'line', si, li, seg, line: ln, panel });
+          t += dur;
+        });
+        segRange.push({ si, start: segStart, end: t });
+      });
+      TL = { cues, total: t, segRange };
+      return TL;
+    }
+    buildTimeline();
+
+    // ---- segment dots ----
+    const segdots = document.getElementById('segdots');
+    segdots.innerHTML = P.segments.map(() => '<div class="d"><span class="fill"></span></div>').join('');
+    const dotEls = [...segdots.querySelectorAll('.d')];
+
+    // ---- panel rendering ----
+    const L = (ja, en) => lang === 'ja' ? ja : en;
+    const ev = P.events;
+
+    // ---- mechanism animation helpers ----
+    // Which fault diagram fits a quake: prefer a clean `mechanism` field from
+    // script.mjs, else classify from the free-text fault wording.
+    function quakeMech(q) {
+      if (q.mechanism) return q.mechanism;
+      return window.Mechanisms ? window.Mechanisms.classifyFault((q.fault_en || '') + ' ' + (q.fault_ja || '')) : 'strike-slip';
+    }
+    function mechFigure(kind, useCaption) {
+      if (!window.Mechanisms) return '';
+      const cap = useCaption
+        ? (() => { const m = window.Mechanisms.label(kind, lang); return '<div class="mech-cap"><b>' + m.title + '</b>\u3000' + m.desc + '</div>'; })()
+        : '';
+      return '<div class="mech-figure">' + window.Mechanisms.svg(kind) + cap + '</div>';
+    }
+
+    // Official impact context (USGS PAGER / GDACS), shown as a colour-coded cell.
+    function impactCell(imp) {
+      if (!imp || !imp.alert) return '';
+      const col = { GREEN: '#46964a', YELLOW: 'var(--flare)', ORANGE: 'var(--volcano)', RED: 'var(--quake)' }[imp.alert] || 'var(--muted)';
+      return '<div><div class="k">' + L('影響の目安', 'Impact') + '</div>' +
+        '<div class="v" style="font-size:22px;color:' + col + '">' + imp.alert +
+        ' <span style="font-size:13px;color:var(--muted);letter-spacing:.08em;font-weight:600">' + imp.source + '</span></div></div>';
+    }
+
+    function panelHTML(panel) {
+      if (!panel) return '';
+      const tt = panel.type;
+      if (tt === 'intro') {
+        const s = P.intro ? L(P.intro.ja, P.intro.en).replace(/\n/g, '<br>')
+          : L('今週の地球を、<span class="accent">7日分</span>。<br>地震・火山・太陽フレア、ぜんぶ。',
+              'Your planet’s week — <span class="accent">seven days</span><br>of quakes, volcanoes &amp; solar flares.');
+        return '<div class="swap statement">' + s + '</div>';
+      }
+      if (tt === 'outro') {
+        const s = P.outro ? L(P.outro.ja, P.outro.en).replace(/\n/g, '<br>')
+          : L('また来週、<span class="accent">お会いしましょう</span>。', 'See you <span class="accent">next week</span>.');
+        return '<div class="swap statement">' + s +
+          '<div style="font-size:24px;color:var(--muted);font-weight:600;margin-top:24px;letter-spacing:.04em">globelabo.netlify.app</div></div>';
+      }
+      if (tt === 'quakelist') {
+        const rows = ev.quakes.map((q, i) => (
+          '<div class="row k-quake' + (i === 0 ? ' hot' : '') + '">' +
+            '<div class="mag">' + q.mag.toFixed(1) + '</div>' +
+            '<div class="place">' + L(q.ja, q.en) + '</div>' +
+            '<div class="aux">' + L(q.day_ja, q.day_en) + ' ・ ' + L('深さ', 'depth') + ' ' + q.depth + 'km</div>' +
+          '</div>')).join('');
+        return '<div class="swap">' +
+          '<div class="panel-eyebrow"><span class="tag"></span>' + L('今週の地震', 'EARTHQUAKES') + '</div>' +
+          '<div class="panel-title">' + L('M4.5以上 ・ ' + ev.quakeTotal + '回', ev.quakeTotal + ' events · M4.5+') + '</div>' +
+          '<div class="rows">' + rows + '</div></div>';
+      }
+      if (tt === 'quakefocus') {
+        const q = ev.quakes[panel.ix];
+        const mech = quakeMech(q);
+        return '<div class="swap">' +
+          '<div class="panel-eyebrow"><span class="tag"></span>' + L('地震のメカニズム', 'EARTHQUAKE MECHANISM') + '</div>' +
+          '<div class="headline k-quake"><div class="big">' + q.mag.toFixed(1) + '</div><div class="where">' + L(q.ja, q.en) + '</div></div>' +
+          mechFigure(mech, true) +
+          '<div class="meta">' +
+            '<div><div class="k">' + L('深さ', 'Depth') + '</div><div class="v">' + q.depth + ' km</div></div>' +
+            '<div><div class="k">' + L('断層型', 'Fault') + '</div><div class="v" style="font-size:24px">' + L(q.fault_ja, q.fault_en) + '</div></div>' +
+            '<div><div class="k">' + L('津波', 'Tsunami') + '</div><div class="v" style="color:' + (q.tsunami ? 'var(--tsunami)' : 'inherit') + '">' + (q.tsunami ? L('注意報', 'Advisory') : L('なし', 'None')) + '</div></div>' +
+            impactCell(q.impact) +
+          '</div></div>';
+      }
+      if (tt === 'volcano') {
+        const v = ev.volcanoes[panel.ix];
+        const big = v.level ? ('Lv' + v.level) : v.aviation;
+        return '<div class="swap">' +
+          '<div class="panel-eyebrow k-volcano"><span class="tag"></span>' + L('火山', 'VOLCANO') + '</div>' +
+          '<div class="panel-title">' + L(v.ja, v.en) + ' <span style="font-size:24px;color:var(--muted);font-weight:500">' + L(v.where_ja, v.where_en) + '</span></div>' +
+          mechFigure('volcano', true) +
+          '<div class="meta">' +
+            '<div><div class="k">' + L('警戒', 'Alert') + '</div><div class="v" style="color:var(--volcano)">' + big + '</div></div>' +
+            '<div><div class="k">' + L('状態', 'Status') + '</div><div class="v" style="font-size:22px">' + L(v.note_ja, v.note_en) + '</div></div>' +
+            impactCell(v.impact) +
+          '</div></div>';
+      }
+      if (tt === 'flare') {
+        const f = ev.flares[panel.ix];
+        return '<div class="swap">' +
+          '<div class="panel-eyebrow k-flare"><span class="tag"></span>' + L('太陽フレア', 'SOLAR FLARE') + '</div>' +
+          '<div class="headline k-flare"><div class="big">' + f.cls + '</div><div class="where">' + f.r + ' ・ ' + L(f.effect_ja, f.effect_en) + '</div></div>' +
+          mechFigure('flare', true) +
+          '<div class="meta">' +
+            '<div><div class="k">' + L('活動領域', 'Region') + '</div><div class="v">' + f.region + '</div></div>' +
+            '<div><div class="k">' + L('ピーク', 'Peak') + '</div><div class="v" style="font-size:24px">' + L(f.peak_ja, f.peak_en) + '</div></div>' +
+            '<div><div class="k">' + L('オーロラ', 'Aurora') + '</div><div class="v">' + (f.aurora ? L('可能性あり', 'Possible') : L('低い', 'Low')) + '</div></div>' +
+          '</div></div>';
+      }
+      if (tt === 'outlook') {
+        const items = (P.outlookBullets && P.outlookBullets.length)
+          ? P.outlookBullets.map(b => [L(b.title_ja, b.title_en), L(b.body_ja, b.body_en)])
+          : [
+          [L('ミンダナオ島沖', 'Off Mindanao'), L('M6.8の余震がしばらく続く見込み。', 'Aftershocks from the M6.8 will continue for a while.')],
+          [L('太陽', 'The Sun'), L('同じ活動領域がまだ地球を向き、追加フレアの可能性。', 'The same active region still faces Earth — more flares possible.')],
+          [L('桜島', 'Sakurajima'), L('降灰が継続する見込み。風下は注意。', 'Ashfall likely to continue — take care downwind.')],
+        ];
+        const bs = items.map((it, i) => (
+          '<div class="bullet"><div class="ix">' + (i + 1) + '</div><div class="bt"><b>' + it[0] + '</b>　' + it[1] + '</div></div>')).join('');
+        return '<div class="swap">' +
+          '<div class="panel-eyebrow k-outlook"><span class="tag"></span>' + L('今後の見込み', 'THE WEEK AHEAD') + '</div>' +
+          '<div class="bullets">' + bs + '</div></div>';
+      }
+      return '';
+    }
+
+    // ---- DOM refs ----
+    const panelEl = document.getElementById('panel');
+    const capEl = document.getElementById('caption');
+    const ltEl = document.getElementById('lowerthird');
+    const ltName = document.getElementById('ltName');
+    const ltRole = document.getElementById('ltRole');
+    const tcEl = document.getElementById('titlecard');
+    const tcEyebrow = document.getElementById('tcEyebrow');
+    const tcTitle = document.getElementById('tcTitle');
+    const tcSub = document.getElementById('tcSub');
+    const dcEl = document.getElementById('disccard');
+    const dcEyebrow = document.getElementById('dcEyebrow');
+    const dcBody = document.getElementById('dcBody');
+    const weekLabel = document.getElementById('weekLabel');
+    document.getElementById('brandSub').textContent = L('地震・火山・太陽フレア', 'QUAKES · VOLCANOES · SOLAR');
+
+    function setWeekLabel() {
+      weekLabel.innerHTML = '<span class="live"><span class="dot"></span>' + L('今週', 'THIS WEEK') + '</span>' +
+        ' &nbsp;·&nbsp; ' + L(P.week.start_ja + '–' + P.week.end_ja, P.week.start_en + ' – ' + P.week.end_en) +
+        ' &nbsp;·&nbsp; No.' + P.week.no;
+    }
+
+    // ---- playback state ----
+    let curTime = 0, playing = false, lastCueKey = '', lastPanelKey = '';
+    let vTimer = null, voiceOn = !renderMode;
+    function setPanel(panel) {
+      const key = JSON.stringify(panel) + lang;
+      if (key === lastPanelKey) return;
+      lastPanelKey = key;
+      panelEl.innerHTML = panelHTML(panel);
+    }
+    function setCaption(txt) {
+      if (capEl._txt === txt) return;
+      capEl._txt = txt;
+      capEl.textContent = txt;
+    }
+
+    function applyCue(cue) {
+      const key = cue.type + cue.si + (cue.li != null ? cue.li : '');
+      if (key === lastCueKey) return;
+      lastCueKey = key;
+      if (cue.type === 'disclaimer') {
+        dcEl.classList.add('show');
+        dcEyebrow.textContent = L('ご利用にあたって', 'PLEASE NOTE');
+        dcBody.textContent = P.disclaimer ? L(P.disclaimer.ja, P.disclaimer.en) : '';
+        tcEl.classList.remove('show');
+        ltEl.classList.remove('show');
+        capEl.textContent = ''; capEl._txt = '';
+        return;
+      }
+      dcEl.classList.remove('show');
+      if (cue.type === 'title') {
+        tcEl.className = 'titlecard show k-' + cue.seg.kind;
+        tcEyebrow.textContent = L(cue.seg.eyebrow_ja, cue.seg.eyebrow_en);
+        tcTitle.textContent = L(cue.seg.title_ja, cue.seg.title_en);
+        tcSub.textContent = L(cue.seg.sub_ja, cue.seg.sub_en);
+        ltEl.classList.remove('show');
+        capEl.textContent = ''; capEl._txt = '';
+        return;
+      }
+      // line
+      tcEl.classList.remove('show');
+      setPanel(cue.panel);
+      const who = cue.line.who;
+      const person = P.hosts[who];
+      ltEl.className = 'lowerthird show ' + (who === 'expert' ? 'expert' : 'host');
+      ltName.textContent = L(person.ja, person.en);
+      ltRole.textContent = L(person.role_ja, person.role_en);
+      setCaption(L(cue.line.ja, cue.line.en));
+      // globe focus
+      const f = cue.line.focus;
+      if (f === 'list') globe.clearFocus();
+      else if (f && f.indexOf(':') > 0) {
+        const [k, ix] = f.split(':');
+        globe.focusEvent(evIndex(k, +ix));
+      }
+    }
+
+    function activeCue(t) {
+      const c = TL.cues;
+      let lo = 0;
+      for (let i = 0; i < c.length; i++) { if (c[i].t <= t) lo = i; else break; }
+      return c[lo];
+    }
+
+    function updateDots(t) {
+      TL.segRange.forEach((r, i) => {
+        const f = Math.max(0, Math.min(1, (t - r.start) / (r.end - r.start)));
+        dotEls[i].querySelector('.fill').style.width = (f * 100) + '%';
+        dotEls[i].classList.toggle('done', t >= r.end);
+      });
+    }
+
+    const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+    const scrub = document.getElementById('scrub');
+    const timeEl = document.getElementById('time');
+    const segNow = document.getElementById('segNow');
+
+    function render(t) {
+      curTime = Math.max(0, Math.min(TL.total, t));
+      const cue = activeCue(curTime);
+      applyCue(cue);
+      updateDots(curTime);
+      scrub.value = String((curTime / TL.total) * 1000);
+      timeEl.textContent = fmt(curTime) + ' / ' + fmt(TL.total);
+      if (cue.type === 'disclaimer') {
+        segNow.textContent = '— · ' + L('ご利用にあたって', 'Please note');
+      } else {
+        const seg = P.segments[cue.si];
+        segNow.textContent = (cue.si + 1) + '/' + P.segments.length + ' · ' + L(seg.title_ja || seg.id, seg.title_en || seg.id);
+      }
+    }
+
+    // ---- loop ----
+    let lastTs = 0;
+    function loop(ts) {
+      if (playing && !voiceOn) {
+        if (!lastTs) lastTs = ts;
+        const dt = (ts - lastTs) / 1000; lastTs = ts;
+        let t = curTime + dt;
+        if (t >= TL.total) { t = TL.total; playing = false; playBtn.textContent = '▶ 再生'; }
+        render(t);
+      } else { lastTs = 0; }
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    // ---- controls + voiced preview playback (browser TTS) ----
+    const playBtn = document.getElementById('playBtn');
+    const voiceBtn = document.getElementById('voiceBtn');
+
+    function voiceFor(who, isJa) {
+      const vs = (window.speechSynthesis ? speechSynthesis.getVoices() : []) || [];
+      const pool = vs.filter(v => isJa ? v.lang.toLowerCase().startsWith('ja') : v.lang.toLowerCase().startsWith('en'));
+      if (!pool.length) return null;
+      let fem, male;
+      if (isJa) {
+        fem = pool.find(v => /kyoko|haruka|nanami|ayumi|sayaka|o-ren|female/i.test(v.name));
+        male = pool.find(v => /otoya|ichiro|keita|hattori|male/i.test(v.name));
+      } else {
+        fem = pool.find(v => /female|samantha|victoria|karen|moira|tessa|zira|aria|jenny|emma|sonia/i.test(v.name));
+        male = pool.find(v => /male|daniel|alex|fred|david|guy|tom|oliver|ryan|brian/i.test(v.name));
+      }
+      const first = fem || pool[0];
+      if (who === 'host') return first;
+      return male || pool.find(v => v !== first) || first;
+    }
+    function speakLine(who, txt, onend) {
+      let u;
+      try { speechSynthesis.cancel(); u = new SpeechSynthesisUtterance(txt); }
+      catch (e) { setTimeout(onend, 60); return; }
+      const isJa = lang === 'ja';
+      const v = voiceFor(who, isJa); if (v) u.voice = v;
+      u.lang = isJa ? 'ja-JP' : 'en-US';
+      u.pitch = who === 'expert' ? 0.82 : 1.16;
+      u.rate = isJa ? 1.0 : 1.03;
+      u.onend = () => setTimeout(onend, 200);
+      u.onerror = () => setTimeout(onend, 300);
+      speechSynthesis.speak(u);
+    }
+    function stepVoiced() {
+      if (!playing) return;
+      const cue = activeCue(curTime);
+      render(curTime);
+      let done = false;
+      const go = () => { if (done || !playing) return; done = true; advanceVoiced(cue); };
+      if (cue.type === 'title' || cue.type === 'disclaimer') { vTimer = setTimeout(go, cue.dur * 1000); }
+      else { speakLine(cue.line.who, L(cue.line.ja, cue.line.en), go); vTimer = setTimeout(go, cue.dur * 1000 + 3500); }
+    }
+    function advanceVoiced(cue) {
+      const t = cue.t + cue.dur;
+      if (t >= TL.total - 0.01) { playing = false; playBtn.textContent = '▶ 再生'; render(TL.total); return; }
+      curTime = t + 0.01; stepVoiced();
+    }
+
+    function play() {
+      if (syncmark) syncmark.style.display = 'none';   // reveal content = audio t=0
+      if (curTime >= TL.total - 0.01) curTime = 0;
+      playing = true; playBtn.textContent = '❚❚ 停止';
+      if (voiceOn && window.speechSynthesis) stepVoiced(); else lastTs = 0;
+    }
+    function pause() {
+      playing = false; playBtn.textContent = '▶ 再生';
+      clearTimeout(vTimer);
+      try { speechSynthesis.cancel(); } catch (e) {}
+    }
+    playBtn.onclick = () => playing ? pause() : play();
+    document.getElementById('restartBtn').onclick = () => { pause(); render(0); };
+    scrub.oninput = () => { pause(); render((+scrub.value / 1000) * TL.total); };
+
+    voiceBtn.onclick = () => {
+      voiceOn = !voiceOn;
+      voiceBtn.classList.toggle('active', voiceOn);
+      voiceBtn.textContent = voiceOn ? '🔊 音声' : '🔇 音声';
+      const wasPlaying = playing; pause(); if (wasPlaying) play();
+    };
+    if (window.speechSynthesis) {
+      const lv = () => { try { speechSynthesis.getVoices(); } catch (e) {} };
+      lv(); speechSynthesis.onvoiceschanged = lv;
+    }
+
+    function setLang(l) {
+      if (l === lang) return;
+      try { speechSynthesis.cancel(); } catch (e) {}
+      clearTimeout(vTimer);
+      lang = l;
+      document.getElementById('langJa').classList.toggle('active', l === 'ja');
+      document.getElementById('langEn').classList.toggle('active', l === 'en');
+      document.documentElement.lang = l;
+      const frac = curTime / TL.total;
+      buildTimeline();
+      lastCueKey = ''; lastPanelKey = '';
+      setWeekLabel();
+      document.getElementById('brandSub').textContent = L('地震・火山・太陽フレア', 'QUAKES · VOLCANOES · SOLAR');
+      render(frac * TL.total);
+      if (playing && voiceOn) stepVoiced();
+    }
+    document.getElementById('langJa').onclick = () => setLang('ja');
+    document.getElementById('langEn').onclick = () => setLang('en');
+
+    // ---- init ----
+    setWeekLabel();
+    render(0);
+
+    // ---- render API (for Playwright screen-capture pipeline) ----
+    window.__studio = {
+      play, pause,
+      seek: (t) => { pause(); render(t); },
+      restart: () => render(0),
+      setLang,
+      get duration() { return TL.total; },
+      get currentTime() { return curTime; },
+      get ready() { return true; },
+    };
+    window.__studioReady = true;
+  })();
+  </script>
+</body>
+</html>
