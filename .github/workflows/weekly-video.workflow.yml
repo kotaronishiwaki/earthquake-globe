@@ -49,6 +49,8 @@ jobs:
           path: |
             video-poster/out/Globe-Weekly-*.mp4
             video-poster/out/*.srt
+            video-poster/out/data.json
+            video-poster/out/program.*.timed.json
           retention-days: 14
 
   # Optional: a separate, manually-triggered job that pushes the already-built
