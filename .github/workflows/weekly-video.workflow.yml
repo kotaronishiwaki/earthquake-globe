@@ -34,6 +34,8 @@ jobs:
           MIN_MAG: '5.5'
           MIN_FLARE_CLASS: M1
           JMA_VOLCANO_URL: ${{ secrets.JMA_VOLCANO_URL }}
+          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+          AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION }}
           BGM_FILE: assets/bed.wav
         run: node run.mjs
 
